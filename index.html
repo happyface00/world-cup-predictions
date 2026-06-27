@@ -4,13 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>⚽ كأس العالم</title>
-    <link rel="stylesheet" href="style.css">
     <style>
         body { font-family: Arial; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); margin: 0; padding: 0; }
         .login-screen { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .login-card { background: white; padding: 40px; border-radius: 15px; text-align: center; width: 90%; max-width: 400px; }
         .login-card h2 { color: #1e3c72; margin-bottom: 20px; }
-        .login-card input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; }
+        .login-card input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
         .login-card button { width: 100%; padding: 12px; margin-top: 10px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
         .login-card button:hover { background: #2563eb; }
         #mainApp { display: none; }
@@ -44,10 +43,11 @@
         .btn-primary:hover { background: #2563eb; }
         .btn-danger { background: #ef4444; color: white; }
         .btn-danger:hover { background: #dc2626; }
-        .control-input { padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1em; margin-bottom: 10px; }
+        .control-input { padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1em; margin-bottom: 10px; width: 100%; box-sizing: border-box; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #f3f4f6; padding: 12px; text-align: right; font-weight: 600; color: #1e3c72; border-bottom: 2px solid #e5e7eb; }
         td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        .btn-small { padding: 6px 12px; font-size: 0.9em; margin: 5px; }
     </style>
 </head>
 <body>
@@ -113,14 +113,14 @@
         <div id="admin" class="view">
             <h2>⚙️ الإدارة</h2>
             <div class="section">
-                <h3>إضافة مشارك</h3>
-                <input type="text" id="newName" placeholder="الاسم" class="control-input" />
+                <h3>➕ إضافة مشارك</h3>
+                <input type="text" id="newName" placeholder="اسم المشارك" class="control-input" />
                 <button onclick="addPlayer()" class="btn btn-primary">إضافة</button>
             </div>
             <div class="section">
-                <h3>إضافة مباراة</h3>
-                <input type="text" id="team1" placeholder="الفريق 1" class="control-input" />
-                <input type="text" id="team2" placeholder="الفريق 2" class="control-input" />
+                <h3>➕ إضافة مباراة</h3>
+                <input type="text" id="team1" placeholder="الفريق الأول" class="control-input" />
+                <input type="text" id="team2" placeholder="الفريق الثاني" class="control-input" />
                 <input type="datetime-local" id="matchTime" class="control-input" />
                 <button onclick="addMatch()" class="btn btn-primary">إضافة</button>
             </div>
@@ -131,8 +131,8 @@
 </div>
 
 <script>
-const DB_KEY = 'wc_db';
-const USER_KEY = 'wc_user';
+const DB_KEY = 'wc_db_2026_v2';
+const USER_KEY = 'wc_user_2026_v2';
 const ADMIN_PASS = '12345';
 
 let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
@@ -143,22 +143,6 @@ let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
 
 let user = JSON.parse(localStorage.getItem(USER_KEY));
 let isAdmin = false;
-
-const teams = ['🇺🇸 أمريكا','🇨🇦 كندا','🇲🇽 المكسيك','🇸🇦 السعودية','🇦🇷 الأرجنتين','🇧🇷 البرازيل','🇫🇷 فرنسا','🇩🇪 ألمانيا','🇪🇸 إسبانيا','🏴 إنجلترا','🇵🇹 البرتغال','🇳🇱 هولندا','🇲🇦 المغرب','🇯🇵 اليابان','🇰🇷 كوريا','🇦🇺 أستراليا'];
-
-if(!db.matches.length) {
-    for(let i=0; i<8; i++) {
-        db.matches.push({
-            id: 'm'+(i+1),
-            home: teams[i*2],
-            away: teams[i*2+1],
-            kickoff: new Date(Date.now()+(i+1)*86400000).toISOString().slice(0,16),
-            homeScore: null,
-            awayScore: null
-        });
-    }
-    saveDB();
-}
 
 function saveDB() {
     localStorage.setItem(DB_KEY, JSON.stringify(db));
@@ -213,11 +197,22 @@ function switchTab(tab, btn) {
 function addPlayer() {
     if(!isAdmin) return;
     let n = document.getElementById('newName').value.trim();
-    if(!n) return;
+    if(!n) { alert('اكتب اسم المشارك!'); return; }
+    if(db.players.find(x => x.name === n)) { alert('الاسم موجود!'); return; }
     db.players.push({id: 'p'+Date.now(), name: n});
     document.getElementById('newName').value = '';
     saveDB();
     render();
+}
+
+function delPlayer(id) {
+    if(!isAdmin) return;
+    if(confirm('حذف المشارك؟')) {
+        db.players = db.players.filter(p => p.id !== id);
+        delete db.predictions[id];
+        saveDB();
+        render();
+    }
 }
 
 function addMatch() {
@@ -225,13 +220,34 @@ function addMatch() {
     let t1 = document.getElementById('team1').value.trim();
     let t2 = document.getElementById('team2').value.trim();
     let tm = document.getElementById('matchTime').value;
-    if(!t1 || !t2 || !tm) return;
+    if(!t1 || !t2 || !tm) { alert('أكمل البيانات!'); return; }
     db.matches.push({id: 'm'+Date.now(), home: t1, away: t2, kickoff: tm, homeScore: null, awayScore: null});
     document.getElementById('team1').value = '';
     document.getElementById('team2').value = '';
     document.getElementById('matchTime').value = '';
     saveDB();
     render();
+}
+
+function delMatch(id) {
+    if(!isAdmin) return;
+    if(confirm('حذف المباراة؟')) {
+        db.matches = db.matches.filter(m => m.id !== id);
+        Object.values(db.predictions).forEach(p => delete p[id]);
+        saveDB();
+        render();
+    }
+}
+
+function setResult(id, h, a) {
+    if(!isAdmin) return;
+    let m = db.matches.find(x => x.id === id);
+    if(m) {
+        m.homeScore = h === '' ? null : +h;
+        m.awayScore = a === '' ? null : +a;
+        saveDB();
+        render();
+    }
 }
 
 function setPred(mid, side, val) {
@@ -285,10 +301,10 @@ function render() {
                 <div class="team">${m.away}</div>
             </div>
             <div class="prediction-inputs">
-                <input type="number" ${locked ? 'disabled' : ''} value="${pr.home}" onchange="setPred('${m.id}', 'home', this.value)">
-                <input type="number" ${locked ? 'disabled' : ''} value="${pr.away}" onchange="setPred('${m.id}', 'away', this.value)">
+                <input type="number" ${locked ? 'disabled' : ''} value="${pr.home}" onchange="setPred('${m.id}', 'home', this.value)" placeholder="أهداف">
+                <input type="number" ${locked ? 'disabled' : ''} value="${pr.away}" onchange="setPred('${m.id}', 'away', this.value)" placeholder="أهداف">
             </div>
-            <p>نقاطك: <b>${getScore(m, pr)}</b></p>
+            <p>نقاطك: <b>${getScore(m, pr)}</b> ${locked ? '🔒' : '✅'}</p>
         </div>`;
     }).join('');
     document.getElementById('matches').innerHTML = matches || '<p>لا توجد مباريات</p>';
@@ -299,10 +315,10 @@ function render() {
         '</table>';
     
     if(isAdmin) {
-        document.getElementById('admin-players').innerHTML = '<h3>المشاركون</h3><table><tr><th>#</th><th>الاسم</th></tr>' +
-            db.players.map((p, i) => `<tr><td>${i+1}</td><td>${p.name}</td></tr>`).join('') + '</table>';
-        document.getElementById('admin-matches').innerHTML = '<h3>المباريات</h3><table><tr><th>المباراة</th><th>البداية</th></tr>' +
-            db.matches.map(m => `<tr><td>${m.home} - ${m.away}</td><td>${m.kickoff}</td></tr>`).join('') + '</table>';
+        document.getElementById('admin-players').innerHTML = '<h3>👥 المشاركون</h3><table><tr><th>#</th><th>الاسم</th><th></th></tr>' +
+            db.players.map((p, i) => `<tr><td>${i+1}</td><td>${p.name}</td><td><button class="btn btn-danger btn-small" onclick="delPlayer('${p.id}')">حذف</button></td></tr>`).join('') + '</table>';
+        document.getElementById('admin-matches').innerHTML = '<h3>⚽ المباريات</h3><table><tr><th>المباراة</th><th>البداية</th><th>النتيجة</th><th></th></tr>' +
+            db.matches.map(m => `<tr><td>${m.home} ضد ${m.away}</td><td>${m.kickoff}</td><td><input style="width:50px" type="number" value="${m.homeScore ?? ''}" onchange="setResult('${m.id}', this.value, this.parentElement.parentElement.querySelectorAll('input')[1].value)"> - <input style="width:50px" type="number" value="${m.awayScore ?? ''}" onchange="setResult('${m.id}', this.parentElement.parentElement.querySelectorAll('input')[0].value, this.value)"></td><td><button class="btn btn-danger btn-small" onclick="delMatch('${m.id}')">حذف</button></td></tr>`).join('') + '</table>';
     }
 }
 
