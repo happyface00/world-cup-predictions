@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚽ كأس العالم في بيت نانا</title>
+    <title>⚽ كأس العالم 2026 بيت نانا</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); min-height: 100vh; }
@@ -13,7 +13,8 @@
         .login-card input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; }
         .login-card button { width: 100%; padding: 12px; margin-top: 10px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
         .login-card button:hover { background: #2563eb; }
-        .loading { text-align: center; color: #666; margin-top: 20px; }
+        .loading { text-align: center; color: #666; margin-top: 20px; font-size: 14px; }
+        .error { color: red; padding: 10px; background: #ffe0e0; border-radius: 5px; margin-top: 10px; }
         #mainApp { display: none; }
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         header { text-align: center; color: white; margin-bottom: 30px; }
@@ -63,6 +64,7 @@
         <input type="text" id="userName" placeholder="اسمك" />
         <button onclick="doLogin()">دخول 🎉</button>
         <div class="loading" id="loginStatus"></div>
+        <div class="error" id="errorMsg" style="display:none;"></div>
     </div>
 </div>
 
@@ -70,7 +72,7 @@
 <div id="mainApp">
     <div class="container">
         <header>
-            <h1>⚽ كأس العالم في بيت نانا</h1>
+            <h1>⚽ كأس العالم 2026 بيت نانا</h1>
             <p>توقعات ونتائج المباريات</p>
         </header>
 
@@ -149,8 +151,17 @@ const firebaseConfig = {
     appId: "1:1003161223635:web:8c6a1f8d4e5f7a9b0c1d2e"
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+let firebase_initialized = false;
+let db = null;
+
+try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    firebase_initialized = true;
+    console.log('✅ Firebase متصل');
+} catch(e) {
+    console.log('❌ خطأ Firebase:', e);
+}
 
 const USER_KEY = 'wc_nana_user';
 const ADMIN_PASS = '12345';
@@ -158,7 +169,6 @@ const ADMIN_PASS = '12345';
 let currentUser = JSON.parse(localStorage.getItem(USER_KEY));
 let isAdmin = false;
 
-// تحميل البيانات من Firebase
 let dbData = {
     players: [],
     matches: [],
@@ -166,36 +176,65 @@ let dbData = {
 };
 
 // الاستماع للتغييرات من Firebase
-db.ref('/').on('value', snapshot => {
-    if(snapshot.exists()) {
-        dbData = snapshot.val();
-        if(currentUser) render();
-    }
-});
+if(firebase_initialized && db) {
+    db.ref('/').on('value', snapshot => {
+        if(snapshot.exists()) {
+            dbData = snapshot.val();
+            if(currentUser) render();
+        }
+    }, error => {
+        console.log('❌ خطأ في قراءة البيانات:', error);
+    });
+}
 
 function doLogin() {
+    if(!firebase_initialized) {
+        showError('Firebase ما متصل! حاول لاحقاً');
+        return;
+    }
+
     let name = document.getElementById('userName').value.trim();
-    if(!name) { alert('اكتب اسمك!'); return; }
+    if(!name) { 
+        showError('اكتب اسمك!');
+        return; 
+    }
     
     document.getElementById('loginStatus').textContent = 'جاري التحقق...';
+    document.getElementById('errorMsg').style.display = 'none';
     
-    db.ref('players').once('value').then(snapshot => {
+    db.ref('players').once('value', snapshot => {
         let players = snapshot.val() || {};
         let playerKey = Object.keys(players).find(k => players[k].name === name);
         
         if(!playerKey) {
             playerKey = 'p' + Date.now();
-            db.ref('players/' + playerKey).set({name: name});
+            db.ref('players/' + playerKey).set({name: name}).then(() => {
+                successLogin(playerKey, name);
+            }).catch(err => {
+                showError('خطأ في الحفظ: ' + err.message);
+            });
+        } else {
+            successLogin(playerKey, name);
         }
-        
-        currentUser = {id: playerKey, name: name};
-        localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
-        
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-        document.getElementById('greeting').textContent = '👋 ' + currentUser.name;
-        render();
+    }, error => {
+        showError('خطأ في الاتصال: ' + error.message);
     });
+}
+
+function successLogin(playerKey, name) {
+    currentUser = {id: playerKey, name: name};
+    localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+    
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    document.getElementById('greeting').textContent = '👋 ' + currentUser.name;
+    render();
+}
+
+function showError(msg) {
+    document.getElementById('loginStatus').textContent = '';
+    document.getElementById('errorMsg').textContent = msg;
+    document.getElementById('errorMsg').style.display = 'block';
 }
 
 function doLogout() {
@@ -205,6 +244,7 @@ function doLogout() {
     document.getElementById('mainApp').style.display = 'none';
     document.getElementById('userName').value = '';
     document.getElementById('loginStatus').textContent = '';
+    document.getElementById('errorMsg').style.display = 'none';
 }
 
 function switchTab(tab, btn) {
