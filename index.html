@@ -62,6 +62,8 @@
         <h2>👋 مرحباً!</h2>
         <p>أدخل اسمك للدخول</p>
         <input type="text" id="userName" placeholder="اسمك" />
+        <input type="url" id="appsScriptUrlInput" placeholder="رابط Apps Script Web App (/exec)" />
+        <button type="button" onclick="saveAppsScriptUrl()" class="btn btn-primary">حفظ رابط الربط</button>
         <button onclick="doLogin()">دخول 🎉</button>
         <div class="loading" id="loginStatus"></div>
         <div class="error" id="errorMsg" style="display:none;"></div>
@@ -136,38 +138,17 @@
     </div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
-
 <script>
-// Firebase Config
-const firebaseConfig = {
-    apiKey: "AIzaSyDzV0e-4ZvLJ7kEHQ1H3LZKrHo0g3YqGOA",
-    authDomain: "world-cup-nana-b43d2.firebaseapp.com",
-    databaseURL: "https://world-cup-nana-b43d2-default-rtdb.firebaseio.com",
-    projectId: "world-cup-nana-b43d2",
-    storageBucket: "world-cup-nana-b43d2.appspot.com",
-    messagingSenderId: "1003161223635",
-    appId: "1:1003161223635:web:8c6a1f8d4e5f7a9b0c1d2e"
-};
-
-let firebase_initialized = false;
-let db = null;
-
-try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.database();
-    firebase_initialized = true;
-    console.log('✅ Firebase متصل');
-} catch(e) {
-    console.log('❌ خطأ Firebase:', e);
-}
-
 const USER_KEY = 'wc_nana_user';
+const APPS_SCRIPT_URL_KEY = 'wc_nana_apps_script_url';
 const ADMIN_PASS = '12345';
+const SHEET_ID = '10qnYnO-JvhGks7LucXEzE-dgvaM6qSH27PukVp9-RVA';
+const AUTO_REFRESH_MS = 3000;
 
 let currentUser = JSON.parse(localStorage.getItem(USER_KEY));
 let isAdmin = false;
+let refreshTimer = null;
+let syncPromise = null;
 
 let dbData = {
     players: [],
@@ -175,21 +156,230 @@ let dbData = {
     predictions: {}
 };
 
-// الاستماع للتغييرات من Firebase
-if(firebase_initialized && db) {
-    db.ref('/').on('value', snapshot => {
-        if(snapshot.exists()) {
-            dbData = snapshot.val();
-            if(currentUser) render();
+function getConfiguredAppsScriptUrl() {
+    const queryValue = new URLSearchParams(location.search).get('appsScriptUrl');
+    if(queryValue) {
+        const normalized = normalizeAppsScriptUrl(queryValue);
+        localStorage.setItem(APPS_SCRIPT_URL_KEY, normalized);
+        return normalized;
+    }
+    return localStorage.getItem(APPS_SCRIPT_URL_KEY) || '';
+}
+
+function normalizeAppsScriptUrl(value) {
+    return (value || '').trim().replace(/\/$/, '');
+}
+
+function saveAppsScriptUrl() {
+    const input = document.getElementById('appsScriptUrlInput');
+    const normalized = normalizeAppsScriptUrl(input.value);
+    if(!normalized) {
+        showError('أدخل رابط Apps Script Web App المنتهي بـ /exec');
+        return;
+    }
+    localStorage.setItem(APPS_SCRIPT_URL_KEY, normalized);
+    hideError();
+    setStatus('تم حفظ رابط الربط');
+    syncData({silent:false});
+}
+
+function renderSetupState() {
+    const input = document.getElementById('appsScriptUrlInput');
+    input.value = getConfiguredAppsScriptUrl();
+    if(getConfiguredAppsScriptUrl()) {
+        setStatus('الربط جاهز مع Google Sheets');
+        return true;
+    }
+    showError('احفظ رابط Apps Script Web App أولاً. ملف السكربت موجود في المشروع ويستخدم الـ Sheet: ' + SHEET_ID);
+    return false;
+}
+
+function setStatus(message) {
+    document.getElementById('loginStatus').textContent = message || '';
+}
+
+function showError(msg) {
+    setStatus('');
+    document.getElementById('errorMsg').textContent = msg;
+    document.getElementById('errorMsg').style.display = 'block';
+}
+
+function hideError() {
+    document.getElementById('errorMsg').style.display = 'none';
+}
+
+function showLoginScreen() {
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('mainApp').style.display = 'none';
+}
+
+function showAppScreen() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+}
+
+function jsonpRequest(action, params = {}) {
+    const baseUrl = getConfiguredAppsScriptUrl();
+    if(!baseUrl) {
+        return Promise.reject(new Error('رابط Apps Script غير مضبوط'));
+    }
+
+    return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+        const script = document.createElement('script');
+        const timeoutId = setTimeout(() => {
+            cleanup();
+            reject(new Error('انتهت مهلة الاتصال بـ Google Sheets'));
+        }, 10000);
+
+        function cleanup() {
+            clearTimeout(timeoutId);
+            delete window[callbackName];
+            script.remove();
         }
-    }, error => {
-        console.log('❌ خطأ في قراءة البيانات:', error);
+
+        window[callbackName] = payload => {
+            cleanup();
+            if(payload && payload.ok) {
+                resolve(payload);
+                return;
+            }
+            reject(new Error(payload?.error || 'فشل الاتصال بـ Google Sheets'));
+        };
+
+        script.onerror = () => {
+            cleanup();
+            reject(new Error('تعذر الوصول إلى Apps Script Web App'));
+        };
+
+        const query = new URLSearchParams({
+            action,
+            ...params,
+            callback: callbackName,
+            _: String(Date.now())
+        });
+
+        script.src = baseUrl + '?' + query.toString();
+        document.body.appendChild(script);
     });
 }
 
-function doLogin() {
-    if(!firebase_initialized) {
-        showError('Firebase ما متصل! حاول لاحقاً');
+function applyRemoteData(data) {
+    const players = Array.isArray(data?.players) ? data.players : [];
+    const matches = Array.isArray(data?.matches) ? data.matches : [];
+    const predictionRows = Array.isArray(data?.predictions) ? data.predictions : [];
+
+    dbData.players = players.map(player => ({
+        id: String(player.id || '').trim(),
+        name: String(player.name || '').trim()
+    })).filter(player => player.id && player.name);
+
+    dbData.matches = matches.map(match => ({
+        id: String(match.id || '').trim(),
+        home: String(match.home || '').trim(),
+        away: String(match.away || '').trim(),
+        kickoff: String(match.kickoff || '').trim(),
+        homeScore: match.homeScore === '' || match.homeScore === null || typeof match.homeScore === 'undefined' ? null : +match.homeScore,
+        awayScore: match.awayScore === '' || match.awayScore === null || typeof match.awayScore === 'undefined' ? null : +match.awayScore
+    })).filter(match => match.id).sort((a, b) => String(a.kickoff).localeCompare(String(b.kickoff)));
+
+    dbData.predictions = {};
+    predictionRows.forEach(prediction => {
+        const playerId = String(prediction.playerId || '').trim();
+        const matchId = String(prediction.matchId || '').trim();
+        if(!playerId || !matchId) return;
+        dbData.predictions[playerId] ??= {};
+        dbData.predictions[playerId][matchId] = {
+            home: prediction.home === null || typeof prediction.home === 'undefined' ? '' : String(prediction.home),
+            away: prediction.away === null || typeof prediction.away === 'undefined' ? '' : String(prediction.away)
+        };
+    });
+}
+
+async function syncData({silent = true} = {}) {
+    if(!getConfiguredAppsScriptUrl()) {
+        renderSetupState();
+        return false;
+    }
+
+    if(syncPromise) {
+        return syncPromise;
+    }
+
+    if(!silent) {
+        setStatus('جاري تحميل البيانات...');
+    }
+
+    syncPromise = jsonpRequest('getData')
+        .then(payload => {
+            applyRemoteData(payload.data);
+            hideError();
+
+            if(currentUser) {
+                const freshUser = dbData.players.find(player => player.id === currentUser.id);
+                if(freshUser) {
+                    currentUser = {id: freshUser.id, name: freshUser.name};
+                    localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+                } else {
+                    currentUser = null;
+                    localStorage.removeItem(USER_KEY);
+                    showLoginScreen();
+                    showError('هذا المستخدم لم يعد موجوداً، سجل دخولك مرة أخرى');
+                }
+            }
+
+            if(currentUser) {
+                render();
+            }
+
+            if(!silent) {
+                setStatus('تم تحديث البيانات');
+            }
+            return true;
+        })
+        .catch(error => {
+            if(!silent || !dbData.players.length) {
+                showError(error.message);
+            }
+            return false;
+        })
+        .finally(() => {
+            syncPromise = null;
+        });
+
+    return syncPromise;
+}
+
+async function runAction(action, params = {}, {silent = true} = {}) {
+    const payload = await jsonpRequest(action, params);
+    applyRemoteData(payload.data);
+    hideError();
+    if(currentUser) {
+        const freshUser = dbData.players.find(player => player.id === currentUser.id);
+        if(freshUser) {
+            currentUser = {id: freshUser.id, name: freshUser.name};
+            localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+        }
+    }
+    render();
+    if(!silent) {
+        setStatus('تم الحفظ في Google Sheets');
+    }
+    return payload;
+}
+
+function startAutoRefresh() {
+    if(refreshTimer) {
+        clearInterval(refreshTimer);
+    }
+    refreshTimer = setInterval(() => {
+        syncData({silent:true});
+    }, AUTO_REFRESH_MS);
+}
+
+async function doLogin() {
+    hideError();
+    if(!renderSetupState()) {
         return;
     }
 
@@ -198,155 +388,158 @@ function doLogin() {
         showError('اكتب اسمك!');
         return; 
     }
-    
-    document.getElementById('loginStatus').textContent = 'جاري التحقق...';
-    document.getElementById('errorMsg').style.display = 'none';
-    
-    db.ref('players').once('value', snapshot => {
-        let players = snapshot.val() || {};
-        let playerKey = Object.keys(players).find(k => players[k].name === name);
-        
-        if(!playerKey) {
-            playerKey = 'p' + Date.now();
-            db.ref('players/' + playerKey).set({name: name}).then(() => {
-                successLogin(playerKey, name);
-            }).catch(err => {
-                showError('خطأ في الحفظ: ' + err.message);
-            });
-        } else {
-            successLogin(playerKey, name);
+    setStatus('جاري التحقق...');
+
+    const loaded = await syncData({silent:true});
+    if(!loaded) {
+        return;
+    }
+
+    let player = dbData.players.find(item => item.name === name);
+    try {
+        if(!player) {
+            const payload = await runAction('ensurePlayer', {name}, {silent:true});
+            player = payload.player;
         }
-    }, error => {
-        showError('خطأ في الاتصال: ' + error.message);
-    });
+        successLogin(player.id, player.name);
+    } catch(error) {
+        showError('خطأ في الحفظ: ' + error.message);
+    }
 }
 
 function successLogin(playerKey, name) {
     currentUser = {id: playerKey, name: name};
     localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
-    
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
+    showAppScreen();
     document.getElementById('greeting').textContent = '👋 ' + currentUser.name;
     render();
 }
 
-function showError(msg) {
-    document.getElementById('loginStatus').textContent = '';
-    document.getElementById('errorMsg').textContent = msg;
-    document.getElementById('errorMsg').style.display = 'block';
-}
-
 function doLogout() {
     currentUser = null;
+    isAdmin = false;
     localStorage.removeItem(USER_KEY);
-    document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('mainApp').style.display = 'none';
+    showLoginScreen();
     document.getElementById('userName').value = '';
-    document.getElementById('loginStatus').textContent = '';
-    document.getElementById('errorMsg').style.display = 'none';
+    setStatus('');
+    hideError();
 }
 
 function switchTab(tab, btn) {
-    document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
-    document.getElementById(tab).classList.add('active');
-    document.querySelectorAll('.nav').forEach(x => x.classList.remove('active'));
-    btn.classList.add('active');
-    
-    if(tab === 'admin') {
+    if(tab === 'admin' && !isAdmin) {
         let pass = prompt('كلمة مرور الإدارة:');
         if(pass !== ADMIN_PASS) {
             alert('كلمة المرور خاطئة!');
-            switchTab('dash', document.querySelector('.nav'));
             return;
         }
         isAdmin = true;
     }
+
+    document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
+    document.getElementById(tab).classList.add('active');
+    document.querySelectorAll('.nav').forEach(x => x.classList.remove('active'));
+    btn.classList.add('active');
     render();
 }
 
-function addPlayer() {
+async function addPlayer() {
     if(!isAdmin) return;
     let n = document.getElementById('newName').value.trim();
     if(!n) { alert('اكتب اسم المشارك!'); return; }
-    
-    db.ref('players').once('value').then(snapshot => {
-        let players = snapshot.val() || {};
-        if(Object.values(players).find(p => p.name === n)) {
-            alert('الاسم موجود!');
-            return;
-        }
-        db.ref('players/p' + Date.now()).set({name: n});
-        document.getElementById('newName').value = '';
-    });
-}
+    if(dbData.players.find(player => player.name === n)) {
+        alert('الاسم موجود!');
+        return;
+    }
 
-function delPlayer(id) {
-    if(!isAdmin) return;
-    if(confirm('حذف المشارك؟')) {
-        db.ref('players/' + id).remove();
-        db.ref('predictions/' + id).remove();
+    try {
+        await runAction('addPlayer', {name: n}, {silent:false});
+        document.getElementById('newName').value = '';
+    } catch(error) {
+        showError(error.message);
     }
 }
 
-function addMatch() {
+async function delPlayer(id) {
+    if(!isAdmin) return;
+    if(confirm('حذف المشارك؟')) {
+        try {
+            await runAction('deletePlayer', {playerId: id}, {silent:false});
+        } catch(error) {
+            showError(error.message);
+        }
+    }
+}
+
+async function addMatch() {
     if(!isAdmin) return;
     let t1 = document.getElementById('team1').value.trim();
     let t2 = document.getElementById('team2').value.trim();
     let tm = document.getElementById('matchTime').value;
     if(!t1 || !t2 || !tm) { alert('أكمل البيانات!'); return; }
-    
-    db.ref('matches/m' + Date.now()).set({
-        home: t1,
-        away: t2,
-        kickoff: tm,
-        homeScore: null,
-        awayScore: null
-    });
-    document.getElementById('team1').value = '';
-    document.getElementById('team2').value = '';
-    document.getElementById('matchTime').value = '';
-}
 
-function delMatch(id) {
-    if(!isAdmin) return;
-    if(confirm('حذف المباراة؟')) {
-        db.ref('matches/' + id).remove();
-        db.ref('predictions').once('value').then(snapshot => {
-            let preds = snapshot.val() || {};
-            Object.keys(preds).forEach(pid => {
-                if(preds[pid][id]) {
-                    db.ref('predictions/' + pid + '/' + id).remove();
-                }
-            });
-        });
+    try {
+        await runAction('addMatch', {
+            home: t1,
+            away: t2,
+            kickoff: tm
+        }, {silent:false});
+        document.getElementById('team1').value = '';
+        document.getElementById('team2').value = '';
+        document.getElementById('matchTime').value = '';
+    } catch(error) {
+        showError(error.message);
     }
 }
 
-function setResult(id, h, a) {
+async function delMatch(id) {
     if(!isAdmin) return;
-    db.ref('matches/' + id).update({
-        homeScore: h === '' ? null : +h,
-        awayScore: a === '' ? null : +a
-    });
+    if(confirm('حذف المباراة؟')) {
+        try {
+            await runAction('deleteMatch', {matchId: id}, {silent:false});
+        } catch(error) {
+            showError(error.message);
+        }
+    }
 }
 
-function setPred(mid, side, val) {
-    let matches = dbData.matches || {};
-    let m = Object.values(matches).find(x => x && (Object.keys(matches).find(k => matches[k] === x) === mid));
-    
-    if(new Date() >= new Date(m.kickoff)) { alert('المباراة مغلقة!'); return; }
-    
-    db.ref('predictions/' + currentUser.id + '/' + mid).set({
-        home: (dbData.predictions[currentUser.id]?.[mid]?.home || ''),
-        away: (dbData.predictions[currentUser.id]?.[mid]?.away || '')
-    }, (error) => {
-        if(!error) {
-            db.ref('predictions/' + currentUser.id + '/' + mid).update({
-                [side]: val
-            });
-        }
-    });
+async function setResult(id, h, a) {
+    if(!isAdmin) return;
+    try {
+        await runAction('setResult', {
+            matchId: id,
+            homeScore: h,
+            awayScore: a
+        });
+    } catch(error) {
+        showError(error.message);
+    }
+}
+
+function isLocked(match) {
+    return !!match?.kickoff && new Date() >= new Date(match.kickoff);
+}
+
+async function setPred(mid, side, val) {
+    const match = dbData.matches.find(item => item.id === mid);
+    if(!match) return;
+    if(isLocked(match)) { alert('المباراة مغلقة!'); return; }
+
+    const currentPrediction = dbData.predictions[currentUser.id]?.[mid] || {home: '', away: ''};
+    const nextPrediction = {
+        home: side === 'home' ? val : currentPrediction.home,
+        away: side === 'away' ? val : currentPrediction.away
+    };
+
+    try {
+        await runAction('setPrediction', {
+            playerId: currentUser.id,
+            matchId: mid,
+            home: nextPrediction.home,
+            away: nextPrediction.away
+        });
+    } catch(error) {
+        showError(error.message);
+    }
 }
 
 function getScore(m, p) {
@@ -358,34 +551,35 @@ function getScore(m, p) {
 }
 
 function getStandings() {
-    let players = dbData.players || {};
-    let matches = dbData.matches || {};
+    let players = dbData.players || [];
+    let matches = dbData.matches || [];
     let predictions = dbData.predictions || {};
     
-    return Object.keys(players).map(pid => {
-        let pts = Object.keys(matches).reduce((s, mid) => {
-            let m = matches[mid];
-            let pr = predictions[pid]?.[mid];
+    return players.map(player => {
+        let pts = matches.reduce((s, match) => {
+            let pr = predictions[player.id]?.[match.id];
+            let m = match;
             return s + getScore(m, pr);
         }, 0);
         return {
-            name: players[pid].name,
-            id: pid,
+            name: player.name,
+            id: player.id,
             pts: pts,
-            cnt: Object.keys(predictions[pid] || {}).length
+            cnt: Object.keys(predictions[player.id] || {}).length
         };
-    }).sort((a, b) => b.pts - a.pts);
+    }).sort((a, b) => b.pts - a.pts || b.cnt - a.cnt || a.name.localeCompare(b.name));
 }
 
 function render() {
     if(!currentUser) return;
     
-    let players = dbData.players || {};
-    let matches = dbData.matches || {};
+    let players = dbData.players || [];
+    let matches = dbData.matches || [];
     let predictions = dbData.predictions || {};
     
-    document.getElementById('sp').textContent = Object.keys(players).length;
-    document.getElementById('sm').textContent = Object.keys(matches).length;
+    document.getElementById('greeting').textContent = '👋 ' + currentUser.name;
+    document.getElementById('sp').textContent = players.length;
+    document.getElementById('sm').textContent = matches.length;
     document.getElementById('st').textContent = Object.keys(predictions).reduce((s, p) => s + Object.keys(predictions[p] || {}).length, 0);
     
     let standings = getStandings();
@@ -396,10 +590,9 @@ function render() {
         st.map((p, i) => `<tr><td>${i+1}</td><td>${p.name}</td><td>${p.pts}</td></tr>`).join('') + 
         '</table>';
     
-    let matchesHTML = Object.keys(matches).map(mid => {
-        let m = matches[mid];
-        let pr = predictions[currentUser.id]?.[mid] || {home: '', away: ''};
-        let locked = new Date() >= new Date(m.kickoff);
+    let matchesHTML = matches.map(m => {
+        let pr = predictions[currentUser.id]?.[m.id] || {home: '', away: ''};
+        let locked = isLocked(m);
         return `<div class="match-card">
             <div class="match-line">
                 <div class="team">${m.home}</div>
@@ -407,8 +600,8 @@ function render() {
                 <div class="team">${m.away}</div>
             </div>
             <div class="prediction-inputs">
-                <input type="number" ${locked ? 'disabled' : ''} value="${pr.home}" onchange="setPred('${mid}', 'home', this.value)" placeholder="أهداف">
-                <input type="number" ${locked ? 'disabled' : ''} value="${pr.away}" onchange="setPred('${mid}', 'away', this.value)" placeholder="أهداف">
+                <input type="number" ${locked ? 'disabled' : ''} value="${pr.home}" onchange="setPred('${m.id}', 'home', this.value)" placeholder="أهداف">
+                <input type="number" ${locked ? 'disabled' : ''} value="${pr.away}" onchange="setPred('${m.id}', 'away', this.value)" placeholder="أهداف">
             </div>
             <p>نقاطك: <b>${getScore(m, pr)}</b> ${locked ? '🔒' : '✅'}</p>
         </div>`;
@@ -421,23 +614,32 @@ function render() {
         '</table>';
     
     if(isAdmin) {
-        document.getElementById('admin-players').innerHTML = '<h3>👥 المشاركون ('+Object.keys(players).length+')</h3><table><tr><th>#</th><th>الاسم</th><th></th></tr>' +
-            Object.keys(players).map((pid, i) => `<tr><td>${i+1}</td><td>${players[pid].name}</td><td><button class="btn btn-danger btn-small" onclick="delPlayer('${pid}')">حذف</button></td></tr>`).join('') + '</table>';
-        document.getElementById('admin-matches').innerHTML = '<h3>⚽ المباريات ('+Object.keys(matches).length+')</h3><table><tr><th>المباراة</th><th>البداية</th><th>النتيجة</th><th></th></tr>' +
-            Object.keys(matches).map(mid => {
-                let m = matches[mid];
-                return `<tr><td>${m.home} ضد ${m.away}</td><td>${m.kickoff}</td><td><input style="width:50px" type="number" value="${m.homeScore ?? ''}" onchange="setResult('${mid}', this.value, this.parentElement.parentElement.querySelectorAll('input')[1].value)"> - <input style="width:50px" type="number" value="${m.awayScore ?? ''}" onchange="setResult('${mid}', this.parentElement.parentElement.querySelectorAll('input')[0].value, this.value)"></td><td><button class="btn btn-danger btn-small" onclick="delMatch('${mid}')">حذف</button></td></tr>`;
+        document.getElementById('admin-players').innerHTML = '<h3>👥 المشاركون ('+players.length+')</h3><table><tr><th>#</th><th>الاسم</th><th></th></tr>' +
+            players.map((player, i) => `<tr><td>${i+1}</td><td>${player.name}</td><td><button class="btn btn-danger btn-small" onclick="delPlayer('${player.id}')">حذف</button></td></tr>`).join('') + '</table>';
+        document.getElementById('admin-matches').innerHTML = '<h3>⚽ المباريات ('+matches.length+')</h3><table><tr><th>المباراة</th><th>البداية</th><th>النتيجة</th><th></th></tr>' +
+            matches.map(m => {
+                return `<tr><td>${m.home} ضد ${m.away}</td><td>${m.kickoff}</td><td><input style="width:50px" type="number" value="${m.homeScore ?? ''}" onchange="setResult('${m.id}', this.value, this.parentElement.parentElement.querySelectorAll('input')[1].value)"> - <input style="width:50px" type="number" value="${m.awayScore ?? ''}" onchange="setResult('${m.id}', this.parentElement.parentElement.querySelectorAll('input')[0].value, this.value)"></td><td><button class="btn btn-danger btn-small" onclick="delMatch('${m.id}')">حذف</button></td></tr>`;
             }).join('') + '</table>';
+        return;
     }
+
+    document.getElementById('admin-players').innerHTML = '';
+    document.getElementById('admin-matches').innerHTML = '';
 }
 
-// Init
-if(currentUser) {
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
-    document.getElementById('greeting').textContent = '👋 ' + currentUser.name;
-    render();
-}
+window.addEventListener('load', async () => {
+    renderSetupState();
+    startAutoRefresh();
+    const loaded = await syncData({silent: !currentUser});
+
+    if(currentUser && loaded) {
+        showAppScreen();
+        render();
+        return;
+    }
+
+    showLoginScreen();
+});
 </script>
 
 </body>
