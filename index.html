@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚽ كأس العالم في بيت نانا</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>⚽ كأس العالم في بيت نانا</h1>
+        <p class="subtitle">توقعات مباريات كأس العالم 2026</p>
+    </header>
+
+    <nav class="navbar">
+        <button class="nav active" data-view="dashboard">📊 لوحة التحكم</button>
+        <button class="nav" data-view="predictions">🎯 التوقعات</button>
+        <button class="nav" data-view="leaderboard">🏆 الترتيب</button>
+        <button class="nav" data-view="fixtures">⚽ المباريات</button>
+        <button class="nav" data-view="admin">⚙️ إدارة</button>
+    </nav>
+
+    <!-- Dashboard View -->
+    <div id="dashboard" class="view active">
+        <h2 id="pageTitle">📊 لوحة التحكم</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">المشاركون</div>
+                <div class="stat-value" id="statPlayers">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">المباريات</div>
+                <div class="stat-value" id="statMatches">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">إجمالي التوقعات</div>
+                <div class="stat-value" id="statPredictions">0</div>
+            </div>
+            <div class="stat-card highlight">
+                <div class="stat-label">أعلى نقاط</div>
+                <div class="stat-value" id="statTop">0</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🔥 المباريات القادمة</h3>
+            <div id="nextMatches" class="matches-grid"></div>
+        </div>
+
+        <div class="section">
+            <h3>🏅 أفضل 5 مشاركين</h3>
+            <div id="topFive"></div>
+        </div>
+    </div>
+
+    <!-- Predictions View -->
+    <div id="predictions" class="view">
+        <h2 id="pageTitle">🎯 التوقعات</h2>
+        
+        <div class="controls">
+            <select id="currentPlayer" class="control-input">
+                <option>اختر مشارك...</option>
+            </select>
+            <input type="text" id="matchSearch" class="control-input" placeholder="🔍 ابحث عن فريق...">
+            <select id="statusFilter" class="control-input">
+                <option value="all">كل المباريات</option>
+                <option value="open">متاحة للتوقع</option>
+                <option value="locked">مغلقة</option>
+            </select>
+        </div>
+
+        <div id="predictionCards" class="matches-grid"></div>
+    </div>
+
+    <!-- Leaderboard View -->
+    <div id="leaderboard" class="view">
+        <h2 id="pageTitle">🏆 جدول الترتيب</h2>
+        <div id="leaderboardTable"></div>
+    </div>
+
+    <!-- Fixtures View -->
+    <div id="fixtures" class="view">
+        <h2 id="pageTitle">⚽ جدول المباريات</h2>
+        <div id="fixturesList" class="matches-grid"></div>
+    </div>
+
+    <!-- Admin View -->
+    <div id="admin" class="view">
+        <h2 id="pageTitle">⚙️ إدارة البيانات</h2>
+
+        <div class="section">
+            <h3>➕ إضافة مشارك جديد</h3>
+            <div class="form-group">
+                <input type="text" id="playerName" class="control-input" placeholder="اسم المشارك">
+                <input type="text" id="playerPhone" class="control-input" placeholder="ملاحظة (اختياري)">
+                <button id="addPlayerBtn" class="btn btn-primary">إضافة مشارك</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>➕ إضافة مباراة جديدة</h3>
+            <div class="form-group">
+                <input type="text" id="homeTeam" class="control-input" placeholder="الفريق الأول">
+                <input type="text" id="awayTeam" class="control-input" placeholder="الفريق الثاني">
+                <input type="datetime-local" id="kickoff" class="control-input">
+                <button id="addMatchBtn" class="btn btn-primary">إضافة مباراة</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>👥 المشاركون</h3>
+            <div id="playersList"></div>
+        </div>
+
+        <div class="section">
+            <h3>🎯 إدخال النتائج</h3>
+            <div id="adminResults"></div>
+        </div>
+
+        <div class="section">
+            <h3>💾 استيراد/تصدير البيانات</h3>
+            <div class="form-group">
+                <button id="exportBtn" class="btn btn-secondary">📥 تحميل البيانات</button>
+                <button id="importBtn" class="btn btn-secondary">📤 رفع البيانات</button>
+                <input type="file" id="importFile" accept=".json" style="display:none;">
+                <button id="resetBtn" class="btn btn-danger">🗑️ مسح كل البيانات</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
