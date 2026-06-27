@@ -131,45 +131,48 @@
 </div>
 
 <script>
-const DB_KEY = 'wc_db_2026_v2';
-const USER_KEY = 'wc_user_2026_v2';
+// مفتاح واحد مشترك لكل البيانات
+const SHARED_DB_KEY = 'wc_shared_db_final';
+const USER_KEY = 'wc_user_final';
 const ADMIN_PASS = '12345';
 
-let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
-    players: [{id: 'p1', name: 'أبوعلي'}],
+// بيانات مشتركة
+let sharedDB = JSON.parse(localStorage.getItem(SHARED_DB_KEY)) || {
+    players: [],
     matches: [],
     predictions: {}
 };
 
-let user = JSON.parse(localStorage.getItem(USER_KEY));
+let currentUser = JSON.parse(localStorage.getItem(USER_KEY));
 let isAdmin = false;
 
-function saveDB() {
-    localStorage.setItem(DB_KEY, JSON.stringify(db));
+function saveSharedDB() {
+    localStorage.setItem(SHARED_DB_KEY, JSON.stringify(sharedDB));
+    console.log('✅ تم حفظ البيانات المشتركة:', sharedDB);
 }
 
 function doLogin() {
     let name = document.getElementById('userName').value.trim();
     if(!name) { alert('اكتب اسمك!'); return; }
     
-    let p = db.players.find(x => x.name === name);
-    if(!p) {
-        p = {id: 'p'+Date.now(), name: name};
-        db.players.push(p);
-        saveDB();
+    let player = sharedDB.players.find(p => p.name === name);
+    if(!player) {
+        player = {id: 'p'+Date.now(), name: name};
+        sharedDB.players.push(player);
+        saveSharedDB();
     }
     
-    user = {id: p.id, name: p.name};
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    currentUser = {id: player.id, name: player.name};
+    localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
     
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
-    document.getElementById('greeting').textContent = '👋 '+user.name;
+    document.getElementById('greeting').textContent = '👋 '+currentUser.name;
     render();
 }
 
 function doLogout() {
-    user = null;
+    currentUser = null;
     localStorage.removeItem(USER_KEY);
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('mainApp').style.display = 'none';
@@ -198,19 +201,19 @@ function addPlayer() {
     if(!isAdmin) return;
     let n = document.getElementById('newName').value.trim();
     if(!n) { alert('اكتب اسم المشارك!'); return; }
-    if(db.players.find(x => x.name === n)) { alert('الاسم موجود!'); return; }
-    db.players.push({id: 'p'+Date.now(), name: n});
+    if(sharedDB.players.find(p => p.name === n)) { alert('الاسم موجود!'); return; }
+    sharedDB.players.push({id: 'p'+Date.now(), name: n});
     document.getElementById('newName').value = '';
-    saveDB();
+    saveSharedDB();
     render();
 }
 
 function delPlayer(id) {
     if(!isAdmin) return;
     if(confirm('حذف المشارك؟')) {
-        db.players = db.players.filter(p => p.id !== id);
-        delete db.predictions[id];
-        saveDB();
+        sharedDB.players = sharedDB.players.filter(p => p.id !== id);
+        delete sharedDB.predictions[id];
+        saveSharedDB();
         render();
     }
 }
@@ -221,42 +224,42 @@ function addMatch() {
     let t2 = document.getElementById('team2').value.trim();
     let tm = document.getElementById('matchTime').value;
     if(!t1 || !t2 || !tm) { alert('أكمل البيانات!'); return; }
-    db.matches.push({id: 'm'+Date.now(), home: t1, away: t2, kickoff: tm, homeScore: null, awayScore: null});
+    sharedDB.matches.push({id: 'm'+Date.now(), home: t1, away: t2, kickoff: tm, homeScore: null, awayScore: null});
     document.getElementById('team1').value = '';
     document.getElementById('team2').value = '';
     document.getElementById('matchTime').value = '';
-    saveDB();
+    saveSharedDB();
     render();
 }
 
 function delMatch(id) {
     if(!isAdmin) return;
     if(confirm('حذف المباراة؟')) {
-        db.matches = db.matches.filter(m => m.id !== id);
-        Object.values(db.predictions).forEach(p => delete p[id]);
-        saveDB();
+        sharedDB.matches = sharedDB.matches.filter(m => m.id !== id);
+        Object.values(sharedDB.predictions).forEach(p => delete p[id]);
+        saveSharedDB();
         render();
     }
 }
 
 function setResult(id, h, a) {
     if(!isAdmin) return;
-    let m = db.matches.find(x => x.id === id);
+    let m = sharedDB.matches.find(x => x.id === id);
     if(m) {
         m.homeScore = h === '' ? null : +h;
         m.awayScore = a === '' ? null : +a;
-        saveDB();
+        saveSharedDB();
         render();
     }
 }
 
 function setPred(mid, side, val) {
-    let m = db.matches.find(x => x.id === mid);
+    let m = sharedDB.matches.find(x => x.id === mid);
     if(new Date() >= new Date(m.kickoff)) { alert('المباراة مغلقة!'); return; }
-    db.predictions[user.id] = db.predictions[user.id] || {};
-    db.predictions[user.id][mid] = db.predictions[user.id][mid] || {home: '', away: ''};
-    db.predictions[user.id][mid][side] = val;
-    saveDB();
+    sharedDB.predictions[currentUser.id] = sharedDB.predictions[currentUser.id] || {};
+    sharedDB.predictions[currentUser.id][mid] = sharedDB.predictions[currentUser.id][mid] || {home: '', away: ''};
+    sharedDB.predictions[currentUser.id][mid][side] = val;
+    saveSharedDB();
     render();
 }
 
@@ -269,21 +272,21 @@ function getScore(m, p) {
 }
 
 function getStandings() {
-    return db.players.map(p => {
-        let pts = db.matches.reduce((s, m) => {
-            let pr = (db.predictions[p.id] || {})[m.id];
+    return sharedDB.players.map(p => {
+        let pts = sharedDB.matches.reduce((s, m) => {
+            let pr = (sharedDB.predictions[p.id] || {})[m.id];
             return s + getScore(m, pr);
         }, 0);
-        return {name: p.name, id: p.id, pts: pts, cnt: Object.keys(db.predictions[p.id] || {}).length};
+        return {name: p.name, id: p.id, pts: pts, cnt: Object.keys(sharedDB.predictions[p.id] || {}).length};
     }).sort((a, b) => b.pts - a.pts);
 }
 
 function render() {
-    if(!user) return;
+    if(!currentUser) return;
     
-    document.getElementById('sp').textContent = db.players.length;
-    document.getElementById('sm').textContent = db.matches.length;
-    document.getElementById('st').textContent = Object.values(db.predictions).reduce((s, p) => s + Object.keys(p).length, 0);
+    document.getElementById('sp').textContent = sharedDB.players.length;
+    document.getElementById('sm').textContent = sharedDB.matches.length;
+    document.getElementById('st').textContent = Object.values(sharedDB.predictions).reduce((s, p) => s + Object.keys(p).length, 0);
     document.getElementById('sx').textContent = getStandings()[0]?.pts || 0;
     
     let st = getStandings().slice(0, 5);
@@ -291,8 +294,8 @@ function render() {
         st.map((p, i) => `<tr><td>${i+1}</td><td>${p.name}</td><td>${p.pts}</td></tr>`).join('') + 
         '</table>';
     
-    let matches = db.matches.map(m => {
-        let pr = (db.predictions[user.id] || {})[m.id] || {home: '', away: ''};
+    let matches = sharedDB.matches.map(m => {
+        let pr = (sharedDB.predictions[currentUser.id] || {})[m.id] || {home: '', away: ''};
         let locked = new Date() >= new Date(m.kickoff);
         return `<div class="match-card">
             <div class="match-line">
@@ -315,18 +318,18 @@ function render() {
         '</table>';
     
     if(isAdmin) {
-        document.getElementById('admin-players').innerHTML = '<h3>👥 المشاركون</h3><table><tr><th>#</th><th>الاسم</th><th></th></tr>' +
-            db.players.map((p, i) => `<tr><td>${i+1}</td><td>${p.name}</td><td><button class="btn btn-danger btn-small" onclick="delPlayer('${p.id}')">حذف</button></td></tr>`).join('') + '</table>';
-        document.getElementById('admin-matches').innerHTML = '<h3>⚽ المباريات</h3><table><tr><th>المباراة</th><th>البداية</th><th>النتيجة</th><th></th></tr>' +
-            db.matches.map(m => `<tr><td>${m.home} ضد ${m.away}</td><td>${m.kickoff}</td><td><input style="width:50px" type="number" value="${m.homeScore ?? ''}" onchange="setResult('${m.id}', this.value, this.parentElement.parentElement.querySelectorAll('input')[1].value)"> - <input style="width:50px" type="number" value="${m.awayScore ?? ''}" onchange="setResult('${m.id}', this.parentElement.parentElement.querySelectorAll('input')[0].value, this.value)"></td><td><button class="btn btn-danger btn-small" onclick="delMatch('${m.id}')">حذف</button></td></tr>`).join('') + '</table>';
+        document.getElementById('admin-players').innerHTML = '<h3>👥 المشاركون ('+sharedDB.players.length+')</h3><table><tr><th>#</th><th>الاسم</th><th></th></tr>' +
+            sharedDB.players.map((p, i) => `<tr><td>${i+1}</td><td>${p.name}</td><td><button class="btn btn-danger btn-small" onclick="delPlayer('${p.id}')">حذف</button></td></tr>`).join('') + '</table>';
+        document.getElementById('admin-matches').innerHTML = '<h3>⚽ المباريات ('+sharedDB.matches.length+')</h3><table><tr><th>المباراة</th><th>البداية</th><th>النتيجة</th><th></th></tr>' +
+            sharedDB.matches.map(m => `<tr><td>${m.home} ضد ${m.away}</td><td>${m.kickoff}</td><td><input style="width:50px" type="number" value="${m.homeScore ?? ''}" onchange="setResult('${m.id}', this.value, this.parentElement.parentElement.querySelectorAll('input')[1].value)"> - <input style="width:50px" type="number" value="${m.awayScore ?? ''}" onchange="setResult('${m.id}', this.parentElement.parentElement.querySelectorAll('input')[0].value, this.value)"></td><td><button class="btn btn-danger btn-small" onclick="delMatch('${m.id}')">حذف</button></td></tr>`).join('') + '</table>';
     }
 }
 
 // Init
-if(user) {
+if(currentUser) {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
-    document.getElementById('greeting').textContent = '👋 '+user.name;
+    document.getElementById('greeting').textContent = '👋 '+currentUser.name;
     render();
 }
 </script>
