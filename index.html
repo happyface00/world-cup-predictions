@@ -402,7 +402,7 @@
                 <div class="section">
                     <h2>⚙️ الإدارة</h2>
                     <p class="muted">هذه الصفحة محمية بكلمة مرور داخلية. من هنا تقدر تضيف مباريات، تسجل النتائج، وتحذف المشاركين أو المباريات.</p>
-                    <div id="adminLockedState" class="message info show">ادخل بكلمة المرور من زر الإدارة لفتح التحكم.</div>
+                    <div id="adminLockedState" class="message info show">افتح رابط الإدارة الخاص على جهازك أول مرة، وبعدها ادخل بكلمة المرور من زر الإدارة.</div>
                 </div>
 
                 <div id="adminContent" style="display:none;">
@@ -441,9 +441,10 @@
         const DEFAULT_DATA_PATH = '/nanaWorldCup2026';
         const USER_KEY = 'nana_world_cup_current_user';
         const LOCAL_CACHE_KEY = 'nana_world_cup_cache_v1';
+        const ADMIN_PASSWORD_KEY = 'nana_world_cup_admin_password';
+        const ADMIN_URL_PARAM = 'admin';
         const LEGACY_USER_KEYS = ['wc_nana_user', 'wc2026_user'];
         const LEGACY_CACHE_KEYS = ['wc2026_pro_v3'];
-        const ADMIN_PASS = 'nana2026';
 
         let currentUser = readStoredUser();
         let appData = createEmptyData();
@@ -519,6 +520,25 @@
 
         function writeLocalJson(key, value) {
             localStorage.setItem(key, JSON.stringify(value));
+        }
+
+        function readStoredAdminPassword() {
+            const url = new URL(window.location.href);
+            const adminFromUrl = normalizeText(url.searchParams.get(ADMIN_URL_PARAM), 80);
+            if (adminFromUrl) {
+                localStorage.setItem(ADMIN_PASSWORD_KEY, adminFromUrl);
+                url.searchParams.delete(ADMIN_URL_PARAM);
+                window.history.replaceState({}, document.title, url.toString());
+                return adminFromUrl;
+            }
+
+            return normalizeText(localStorage.getItem(ADMIN_PASSWORD_KEY) || '', 80);
+        }
+
+        function getShareableUrl() {
+            const url = new URL(window.location.href);
+            url.searchParams.delete(ADMIN_URL_PARAM);
+            return url.toString();
         }
 
         function readCachedData() {
@@ -902,7 +922,7 @@
             });
             document.getElementById('adminContent').style.display = 'none';
             document.getElementById('adminLockedState').className = 'message info show';
-            document.getElementById('adminLockedState').textContent = 'ادخل بكلمة المرور من زر الإدارة لفتح التحكم.';
+            document.getElementById('adminLockedState').textContent = 'افتح رابط الإدارة الخاص على جهازك أول مرة، وبعدها ادخل بكلمة المرور من زر الإدارة.';
             if (showNotice && notice) {
                 showMessage('loginMessage', notice, 'info');
             } else {
@@ -912,7 +932,7 @@
 
         async function copyLink() {
             try {
-                await navigator.clipboard.writeText(window.location.href);
+                await navigator.clipboard.writeText(getShareableUrl());
                 alert('تم نسخ الرابط ✅');
             } catch {
                 alert('انسخ الرابط من المتصفح يدوياً.');
@@ -1065,25 +1085,19 @@
             const match = appData.matches[matchId];
             if (!match) return;
             if (!confirm(`حذف مباراة ${match.home} ضد ${match.away}؟`)) return;
-            await Promise.all(
-                Object.keys(appData.predictions || {}).map((playerId) => {
-                    if (!appData.predictions[playerId]?.[matchId]) return Promise.resolve();
-                    delete appData.predictions[playerId][matchId];
-                    return Promise.resolve();
-                })
-            );
+            const affectedPlayerIds = Object.keys(appData.predictions || {}).filter((playerId) => {
+                return Boolean(appData.predictions[playerId]?.[matchId]);
+            });
+            affectedPlayerIds.forEach((playerId) => {
+                delete appData.predictions[playerId][matchId];
+            });
             delete appData.matches[matchId];
             persistCache();
             render();
 
             try {
                 await apiRequest(`/matches/${matchId}`, 'DELETE');
-                await Promise.all(
-                    Object.keys(appData.predictions || {}).map((playerId) => {
-                        if (!appData.predictions[playerId]?.[matchId]) return Promise.resolve();
-                        return apiRequest(`/predictions/${playerId}/${matchId}`, 'DELETE');
-                    })
-                );
+                await Promise.all(affectedPlayerIds.map((playerId) => apiRequest(`/predictions/${playerId}/${matchId}`, 'DELETE')));
                 clearOfflineStatus();
             } catch (error) {
                 console.error(error);
@@ -1094,8 +1108,14 @@
         }
 
         function openAdmin() {
+            const configuredPassword = readStoredAdminPassword();
+            if (!configuredPassword) {
+                alert('ما فيه رابط إدارة محفوظ على هذا الجهاز. افتح رابط الإدارة الخاص أول مرة ثم جرّب من جديد.');
+                return false;
+            }
+
             const password = prompt('اكتب كلمة مرور الإدارة');
-            if (password !== ADMIN_PASS) {
+            if (normalizeText(password, 80) !== configuredPassword) {
                 alert('كلمة المرور غير صحيحة.');
                 return false;
             }
@@ -1157,8 +1177,8 @@
                     </div>
                     ${compact ? '' : `
                         <div class="prediction-inputs">
-                            <input class="control-input" type="number" min="0" ${locked ? 'disabled' : ''} value="${prediction.home === '' ? '' : escapeHtml(prediction.home)}" onchange="savePrediction('${matchId}', 'home', this.value)">
-                            <input class="control-input" type="number" min="0" ${locked ? 'disabled' : ''} value="${prediction.away === '' ? '' : escapeHtml(prediction.away)}" onchange="savePrediction('${matchId}', 'away', this.value)">
+                            <input class="control-input" type="number" min="0" ${locked ? 'disabled' : ''} value="${prediction.home === '' ? '' : escapeHtml(prediction.home)}" data-match-id="${escapeHtml(matchId)}" data-prediction-side="home">
+                            <input class="control-input" type="number" min="0" ${locked ? 'disabled' : ''} value="${prediction.away === '' ? '' : escapeHtml(prediction.away)}" data-match-id="${escapeHtml(matchId)}" data-prediction-side="away">
                         </div>
                         <div class="muted">نقاطك على هذه المباراة: <strong>${points}</strong></div>
                     `}
@@ -1198,7 +1218,7 @@
                 String(index + 1),
                 escapeHtml(player.name),
                 String(getStandings().find((row) => row.id === playerId)?.points || 0),
-                `<button class="btn btn-danger btn-small" onclick="deletePlayer('${playerId}')">حذف</button>`
+                `<button class="btn btn-danger btn-small" data-delete-player-id="${escapeHtml(playerId)}">حذف</button>`
             ]);
             document.getElementById('adminPlayers').innerHTML = renderTable(
                 ['#', 'الاسم', 'النقاط', ''],
@@ -1209,8 +1229,8 @@
             const matchesRows = matchEntries().map(([matchId, match]) => [
                 `${escapeHtml(match.home)}<br><span class="muted">ضد ${escapeHtml(match.away)}</span>`,
                 escapeHtml(formatKickoff(match.kickoff)),
-                `<div style="display:flex; gap:8px; align-items:center;"><input class="control-input" style="width:72px; padding:8px 10px;" type="number" min="0" value="${match.homeScore ?? ''}" onchange="setResult('${matchId}', this.value, this.nextElementSibling.value)"><input class="control-input" style="width:72px; padding:8px 10px;" type="number" min="0" value="${match.awayScore ?? ''}" onchange="setResult('${matchId}', this.previousElementSibling.value, this.value)"></div>`,
-                `<button class="btn btn-danger btn-small" onclick="deleteMatch('${matchId}')">حذف</button>`
+                `<div data-result-match="${escapeHtml(matchId)}" style="display:flex; gap:8px; align-items:center;"><input class="control-input" style="width:72px; padding:8px 10px;" type="number" min="0" value="${match.homeScore ?? ''}" data-result-side="home"><input class="control-input" style="width:72px; padding:8px 10px;" type="number" min="0" value="${match.awayScore ?? ''}" data-result-side="away"></div>`,
+                `<button class="btn btn-danger btn-small" data-delete-match-id="${escapeHtml(matchId)}">حذف</button>`
             ]);
             document.getElementById('adminMatches').innerHTML = renderTable(
                 ['المباراة', 'الوقت', 'النتيجة', ''],
@@ -1236,6 +1256,30 @@
             document.getElementById('logoutBtn').addEventListener('click', () => logout());
             document.getElementById('shareBtn').addEventListener('click', copyLink);
             document.getElementById('addMatchBtn').addEventListener('click', addMatch);
+            document.getElementById('matchesList').addEventListener('change', (event) => {
+                const input = event.target.closest('[data-prediction-side]');
+                if (!input) return;
+                savePrediction(input.dataset.matchId, input.dataset.predictionSide, input.value);
+            });
+            document.getElementById('adminPlayers').addEventListener('click', (event) => {
+                const button = event.target.closest('[data-delete-player-id]');
+                if (!button) return;
+                deletePlayer(button.dataset.deletePlayerId);
+            });
+            document.getElementById('adminMatches').addEventListener('click', (event) => {
+                const button = event.target.closest('[data-delete-match-id]');
+                if (!button) return;
+                deleteMatch(button.dataset.deleteMatchId);
+            });
+            document.getElementById('adminMatches').addEventListener('change', (event) => {
+                const input = event.target.closest('[data-result-side]');
+                if (!input) return;
+                const row = input.closest('[data-result-match]');
+                if (!row) return;
+                const homeInput = row.querySelector('[data-result-side="home"]');
+                const awayInput = row.querySelector('[data-result-side="away"]');
+                setResult(row.dataset.resultMatch, homeInput?.value ?? '', awayInput?.value ?? '');
+            });
 
             document.querySelectorAll('.nav').forEach((button) => {
                 button.addEventListener('click', () => {
@@ -1267,11 +1311,6 @@
                 if (currentUser) refreshData();
             }, 15000);
         }
-
-        window.savePrediction = savePrediction;
-        window.setResult = setResult;
-        window.deletePlayer = deletePlayer;
-        window.deleteMatch = deleteMatch;
 
         init();
     </script>
