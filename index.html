@@ -438,7 +438,7 @@
 
     <script>
         const DATABASE_URL = 'https://world-cup-nana-b43d2-default-rtdb.firebaseio.com';
-        const DATA_PATH = '/nanaWorldCup2026';
+        const DEFAULT_DATA_PATH = '/nanaWorldCup2026';
         const USER_KEY = 'nana_world_cup_current_user';
         const LOCAL_CACHE_KEY = 'nana_world_cup_cache_v1';
         const ADMIN_PASS = 'nana2026';
@@ -449,6 +449,8 @@
         let loading = false;
         let pollingId = null;
         let hasPendingLocalChanges = false;
+        let activeDataPath = DEFAULT_DATA_PATH;
+        let hasResolvedDataPath = false;
 
         function createEmptyData() {
             return {
@@ -503,12 +505,20 @@
             return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
         }
 
-        function nodeUrl(path = '') {
-            return `${DATABASE_URL}${DATA_PATH}${path}.json`;
+        function hasAppDataShape(value) {
+            return Boolean(value)
+                && typeof value === 'object'
+                && ['players', 'matches', 'predictions'].some((key) => Object.prototype.hasOwnProperty.call(value, key));
         }
 
-        async function apiRequest(path = '', method = 'GET', body) {
-            const response = await fetch(nodeUrl(path), {
+        function nodeUrl(path = '', basePath = activeDataPath) {
+            const normalizedBase = basePath ? (basePath.startsWith('/') ? basePath : `/${basePath}`) : '';
+            const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+            return `${DATABASE_URL}${normalizedBase}${normalizedPath}.json`;
+        }
+
+        async function rawApiRequest(basePath, path = '', method = 'GET', body) {
+            const response = await fetch(nodeUrl(path, basePath), {
                 method,
                 headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
                 body: body === undefined ? undefined : JSON.stringify(body)
@@ -519,6 +529,49 @@
             }
 
             return response.status === 204 ? null : response.json();
+        }
+
+        async function resolveDataPath(force = false) {
+            if (hasResolvedDataPath && !force) {
+                return activeDataPath;
+            }
+
+            let lastError = null;
+
+            try {
+                const preferredData = await rawApiRequest(DEFAULT_DATA_PATH, '', 'GET');
+                if (preferredData !== null) {
+                    activeDataPath = DEFAULT_DATA_PATH;
+                    hasResolvedDataPath = true;
+                    return activeDataPath;
+                }
+            } catch (error) {
+                lastError = error;
+            }
+
+            try {
+                const legacyData = await rawApiRequest('', '', 'GET');
+                if (hasAppDataShape(legacyData)) {
+                    activeDataPath = '';
+                    hasResolvedDataPath = true;
+                    return activeDataPath;
+                }
+            } catch (error) {
+                lastError = error;
+            }
+
+            if (lastError) {
+                throw lastError;
+            }
+
+            activeDataPath = DEFAULT_DATA_PATH;
+            hasResolvedDataPath = true;
+            return activeDataPath;
+        }
+
+        async function apiRequest(path = '', method = 'GET', body) {
+            const basePath = await resolveDataPath();
+            return rawApiRequest(basePath, path, method, body);
         }
 
         async function readRemoteData() {

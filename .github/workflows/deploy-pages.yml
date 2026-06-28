@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - copilot/reset-all-projects
   workflow_dispatch:
 
 permissions:
