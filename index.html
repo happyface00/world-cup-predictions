@@ -347,6 +347,7 @@
                     <button id="logoutBtn" class="btn btn-danger">خروج</button>
                 </div>
             </div>
+            <div id="appStatus" class="message"></div>
 
             <nav class="navbar">
                 <button class="nav active" data-view="dashboard">📊 الرئيسية</button>
@@ -439,6 +440,7 @@
         const DATABASE_URL = 'https://world-cup-nana-b43d2-default-rtdb.firebaseio.com';
         const DATA_PATH = '/nanaWorldCup2026';
         const USER_KEY = 'nana_world_cup_current_user';
+        const LOCAL_CACHE_KEY = 'nana_world_cup_cache_v1';
         const ADMIN_PASS = 'nana2026';
 
         let currentUser = readLocalJson(USER_KEY);
@@ -446,12 +448,21 @@
         let isAdmin = false;
         let loading = false;
         let pollingId = null;
+        let hasPendingLocalChanges = false;
 
         function createEmptyData() {
             return {
                 players: {},
                 matches: {},
                 predictions: {}
+            };
+        }
+
+        function normalizeData(remote) {
+            return {
+                players: remote?.players && typeof remote.players === 'object' ? remote.players : {},
+                matches: remote?.matches && typeof remote.matches === 'object' ? remote.matches : {},
+                predictions: remote?.predictions && typeof remote.predictions === 'object' ? remote.predictions : {}
             };
         }
 
@@ -465,6 +476,14 @@
 
         function writeLocalJson(key, value) {
             localStorage.setItem(key, JSON.stringify(value));
+        }
+
+        function readCachedData() {
+            return normalizeData(readLocalJson(LOCAL_CACHE_KEY) || createEmptyData());
+        }
+
+        function persistCache() {
+            writeLocalJson(LOCAL_CACHE_KEY, appData);
         }
 
         function escapeHtml(value) {
@@ -507,14 +526,15 @@
             if (!remote) {
                 const initial = createEmptyData();
                 await apiRequest('', 'PUT', initial);
+                appData = initial;
+                persistCache();
                 return initial;
             }
 
-            return {
-                players: remote.players && typeof remote.players === 'object' ? remote.players : {},
-                matches: remote.matches && typeof remote.matches === 'object' ? remote.matches : {},
-                predictions: remote.predictions && typeof remote.predictions === 'object' ? remote.predictions : {}
-            };
+            const normalized = normalizeData(remote);
+            appData = normalized;
+            persistCache();
+            return normalized;
         }
 
         function playerEntries() {
@@ -637,12 +657,36 @@
             document.getElementById('predictionSaving').textContent = text;
         }
 
+        function showOfflineStatus() {
+            showMessage(
+                'appStatus',
+                'Firebase غير متاح حالياً. التطبيق شغال على النسخة المحفوظة في هذا الجهاز، وأي تغييرات جديدة ستُحفظ محلياً إلى أن يرجع الاتصال.',
+                'info'
+            );
+        }
+
+        function clearOfflineStatus() {
+            if (!hasPendingLocalChanges) {
+                clearMessage('appStatus');
+            }
+        }
+
+        async function syncPendingChanges() {
+            if (!hasPendingLocalChanges) return;
+            await apiRequest('', 'PUT', appData);
+            hasPendingLocalChanges = false;
+            persistCache();
+            showMessage('appStatus', 'رجع الاتصال وتمت مزامنة التغييرات مع Firebase ✅', 'success');
+        }
+
         async function refreshData(showLoginError = false) {
             if (loading) return;
             loading = true;
 
             try {
+                await syncPendingChanges();
                 appData = await readRemoteData();
+                clearOfflineStatus();
 
                 if (currentUser && !appData.players[currentUser.id]) {
                     await logout(true, 'تم حذف اسمك من الإدارة، سجّل دخول من جديد.');
@@ -652,8 +696,13 @@
                 render();
             } catch (error) {
                 console.error(error);
+                appData = readCachedData();
+                if (currentUser) {
+                    render();
+                    showOfflineStatus();
+                }
                 if (showLoginError) {
-                    showMessage('loginMessage', 'تعذر الاتصال بقاعدة البيانات حالياً. جرّب بعد قليل.', 'error');
+                    showMessage('loginMessage', 'تعذر الاتصال بقاعدة البيانات حالياً. إذا عندك نسخة محفوظة على هذا الجهاز تقدر تكمل بها مؤقتاً.', 'info');
                 }
             } finally {
                 loading = false;
@@ -680,7 +729,15 @@
             showMessage('loginMessage', 'جاري الدخول...', 'info');
 
             try {
-                const data = await readRemoteData();
+                let usedOfflineFallback = false;
+                let data;
+                try {
+                    data = await readRemoteData();
+                } catch (error) {
+                    console.error(error);
+                    usedOfflineFallback = true;
+                    data = readCachedData();
+                }
                 appData = data;
 
                 const existing = playerEntries().find(([, player]) => normalizeText(player.name).toLowerCase() === name.toLowerCase());
@@ -688,11 +745,17 @@
 
                 if (!playerId) {
                     playerId = createId('p');
-                    await apiRequest(`/players/${playerId}`, 'PUT', {
+                    const payload = {
                         name,
                         createdAt: new Date().toISOString()
-                    });
-                    appData.players[playerId] = { name, createdAt: new Date().toISOString() };
+                    };
+                    appData.players[playerId] = payload;
+                    persistCache();
+                    if (usedOfflineFallback) {
+                        hasPendingLocalChanges = true;
+                    } else {
+                        await apiRequest(`/players/${playerId}`, 'PUT', payload);
+                    }
                 }
 
                 currentUser = { id: playerId, name };
@@ -701,7 +764,12 @@
                 document.getElementById('userName').value = '';
                 showApp();
                 render();
-                await refreshData();
+                if (usedOfflineFallback || hasPendingLocalChanges) {
+                    showOfflineStatus();
+                } else {
+                    clearOfflineStatus();
+                    await refreshData();
+                }
             } catch (error) {
                 console.error(error);
                 showMessage('loginMessage', 'تعذر تسجيل الدخول الآن. تأكد من الإنترنت ثم جرّب مرة ثانية.', 'error');
@@ -757,26 +825,30 @@
             updatedPrediction[side] = cleaned;
 
             setSaving('جاري حفظ التوقع...');
+            appData.predictions[currentUser.id] ||= {};
 
             try {
                 if (updatedPrediction.home === '' && updatedPrediction.away === '') {
+                    delete appData.predictions[currentUser.id][matchId];
+                    persistCache();
+                    render();
                     await apiRequest(`/predictions/${currentUser.id}/${matchId}`, 'DELETE');
-                    if (appData.predictions[currentUser.id]) {
-                        delete appData.predictions[currentUser.id][matchId];
-                    }
                 } else {
-                    await apiRequest(`/predictions/${currentUser.id}/${matchId}`, 'PUT', updatedPrediction);
-                    appData.predictions[currentUser.id] ||= {};
                     appData.predictions[currentUser.id][matchId] = updatedPrediction;
+                    persistCache();
+                    render();
+                    await apiRequest(`/predictions/${currentUser.id}/${matchId}`, 'PUT', updatedPrediction);
                 }
 
-                render();
+                clearOfflineStatus();
                 setSaving('تم الحفظ ✅');
                 setTimeout(() => setSaving(''), 1200);
             } catch (error) {
                 console.error(error);
-                setSaving('');
-                alert('تعذر حفظ التوقع. حاول مرة ثانية.');
+                hasPendingLocalChanges = true;
+                persistCache();
+                showOfflineStatus();
+                setSaving('تم الحفظ على هذا الجهاز مؤقتاً');
             }
         }
 
@@ -805,17 +877,24 @@
                 awayScore: null,
                 createdAt: new Date().toISOString()
             };
+            appData.matches[matchId] = payload;
+            persistCache();
+            render();
 
             try {
                 await apiRequest(`/matches/${matchId}`, 'PUT', payload);
-                appData.matches[matchId] = payload;
                 document.getElementById('homeTeam').value = '';
                 document.getElementById('awayTeam').value = '';
                 document.getElementById('kickoff').value = '';
-                render();
+                clearOfflineStatus();
             } catch (error) {
                 console.error(error);
-                alert('تعذر إضافة المباراة.');
+                hasPendingLocalChanges = true;
+                persistCache();
+                document.getElementById('homeTeam').value = '';
+                document.getElementById('awayTeam').value = '';
+                document.getElementById('kickoff').value = '';
+                showOfflineStatus();
             }
         }
 
@@ -826,19 +905,23 @@
 
             const nextHome = homeScore === '' ? null : Math.max(0, Number(homeScore) || 0);
             const nextAway = awayScore === '' ? null : Math.max(0, Number(awayScore) || 0);
+            const updated = {
+                ...match,
+                homeScore: nextHome,
+                awayScore: nextAway
+            };
+            appData.matches[matchId] = updated;
+            persistCache();
+            render();
 
             try {
-                const updated = {
-                    ...match,
-                    homeScore: nextHome,
-                    awayScore: nextAway
-                };
                 await apiRequest(`/matches/${matchId}`, 'PUT', updated);
-                appData.matches[matchId] = updated;
-                render();
+                clearOfflineStatus();
             } catch (error) {
                 console.error(error);
-                alert('تعذر حفظ النتيجة.');
+                hasPendingLocalChanges = true;
+                persistCache();
+                showOfflineStatus();
             }
         }
 
@@ -847,16 +930,20 @@
             const player = appData.players[playerId];
             if (!player) return;
             if (!confirm(`حذف المشارك ${player.name}؟`)) return;
+            delete appData.players[playerId];
+            delete appData.predictions[playerId];
+            persistCache();
+            render();
 
             try {
                 await apiRequest(`/players/${playerId}`, 'DELETE');
                 await apiRequest(`/predictions/${playerId}`, 'DELETE');
-                delete appData.players[playerId];
-                delete appData.predictions[playerId];
-                render();
+                clearOfflineStatus();
             } catch (error) {
                 console.error(error);
-                alert('تعذر حذف المشارك.');
+                hasPendingLocalChanges = true;
+                persistCache();
+                showOfflineStatus();
             }
         }
 
@@ -865,21 +952,31 @@
             const match = appData.matches[matchId];
             if (!match) return;
             if (!confirm(`حذف مباراة ${match.home} ضد ${match.away}؟`)) return;
+            await Promise.all(
+                Object.keys(appData.predictions || {}).map((playerId) => {
+                    if (!appData.predictions[playerId]?.[matchId]) return Promise.resolve();
+                    delete appData.predictions[playerId][matchId];
+                    return Promise.resolve();
+                })
+            );
+            delete appData.matches[matchId];
+            persistCache();
+            render();
 
             try {
                 await apiRequest(`/matches/${matchId}`, 'DELETE');
                 await Promise.all(
                     Object.keys(appData.predictions || {}).map((playerId) => {
                         if (!appData.predictions[playerId]?.[matchId]) return Promise.resolve();
-                        delete appData.predictions[playerId][matchId];
                         return apiRequest(`/predictions/${playerId}/${matchId}`, 'DELETE');
                     })
                 );
-                delete appData.matches[matchId];
-                render();
+                clearOfflineStatus();
             } catch (error) {
                 console.error(error);
-                alert('تعذر حذف المباراة.');
+                hasPendingLocalChanges = true;
+                persistCache();
+                showOfflineStatus();
             }
         }
 
