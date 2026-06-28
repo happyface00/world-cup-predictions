@@ -3,442 +3,1326 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚽ كأس العالم 2026 بيت نانا</title>
+    <title>⚽ كأس العالم في بيت نانا</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); min-height: 100vh; }
-        .login-screen { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .login-card { background: white; padding: 40px; border-radius: 15px; text-align: center; width: 90%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        .login-card h2 { color: #1e3c72; margin-bottom: 20px; font-size: 2em; }
-        .login-card input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; }
-        .login-card button { width: 100%; padding: 12px; margin-top: 10px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
-        .login-card button:hover { background: #2563eb; }
-        .loading { text-align: center; color: #666; margin-top: 20px; font-size: 14px; }
-        .error { color: red; padding: 10px; background: #ffe0e0; border-radius: 5px; margin-top: 10px; }
-        #mainApp { display: none; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        header { text-align: center; color: white; margin-bottom: 30px; }
-        header h1 { font-size: 2.5em; }
-        header p { font-size: 1.1em; opacity: 0.9; }
-        .user-info { background: white; padding: 15px 20px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .navbar { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; justify-content: center; }
-        .nav { padding: 12px 20px; background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s; }
-        .nav:hover { background: rgba(255,255,255,0.3); }
-        .nav.active { background: #fbbf24; color: #1e3c72; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #123c7a 0%, #1f5fbf 100%);
+            min-height: 100vh;
+            color: #1f2937;
+        }
+        .login-screen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card, .login-card {
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+        }
+        .login-card {
+            width: min(100%, 460px);
+            padding: 32px;
+            text-align: center;
+        }
+        .login-card h1 {
+            color: #123c7a;
+            margin-bottom: 12px;
+            font-size: 2rem;
+        }
+        .login-card p {
+            color: #4b5563;
+            margin-bottom: 10px;
+            line-height: 1.7;
+        }
+        .hint {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1d4ed8;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            margin-top: 18px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        header h1 {
+            font-size: 2.4rem;
+            margin-bottom: 8px;
+        }
+        header p {
+            opacity: 0.95;
+            line-height: 1.8;
+        }
+        .top-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+            padding: 16px 18px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+        .top-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .navbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+        .nav {
+            border: none;
+            cursor: pointer;
+            padding: 12px 18px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.18);
+            color: #fff;
+            font-weight: 700;
+            transition: 0.2s ease;
+        }
+        .nav:hover, .nav.active {
+            background: #fbbf24;
+            color: #123c7a;
+        }
         .view { display: none; }
         .view.active { display: block; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .stat-card { background: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .stat-card.highlight { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: white; }
-        .stat-value { font-size: 2.5em; font-weight: bold; color: #1e3c72; }
-        .stat-card.highlight .stat-value { color: white; }
-        .stat-label { font-size: 0.9em; color: #666; margin-bottom: 10px; }
-        .stat-card.highlight .stat-label { color: rgba(255,255,255,0.9); }
-        .section { background: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .section h3 { margin-bottom: 20px; color: #1e3c72; }
-        .match-card { background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 10px; padding: 15px; margin-bottom: 15px; }
-        .match-line { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; margin-bottom: 12px; text-align: center; }
-        .team { font-weight: bold; }
-        .score { font-size: 1.3em; font-weight: bold; color: #1e3c72; }
-        .prediction-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .prediction-inputs input { padding: 10px; border: 2px solid #e5e7eb; border-radius: 6px; text-align: center; }
-        .btn { padding: 12px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
-        .btn-primary { background: #3b82f6; color: white; }
-        .btn-primary:hover { background: #2563eb; }
-        .btn-danger { background: #ef4444; color: white; }
-        .btn-danger:hover { background: #dc2626; }
-        .control-input { padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1em; margin-bottom: 10px; width: 100%; }
-        table { width: 100%; border-collapse: collapse; }
-        th { background: #f3f4f6; padding: 12px; text-align: right; font-weight: 600; color: #1e3c72; border-bottom: 2px solid #e5e7eb; }
-        td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
-        .btn-small { padding: 6px 12px; font-size: 0.9em; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+        .stat-card.highlight {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: #fff;
+        }
+        .stat-label {
+            color: #6b7280;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+        .stat-card.highlight .stat-label,
+        .stat-card.highlight .stat-value {
+            color: #fff;
+        }
+        .stat-value {
+            color: #123c7a;
+            font-size: 2.2rem;
+            font-weight: 800;
+        }
+        .section {
+            background: #fff;
+            padding: 22px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+        .section h2, .section h3 {
+            color: #123c7a;
+            margin-bottom: 14px;
+        }
+        .section-head {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .section-note {
+            color: #6b7280;
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+        .matches-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        .match-card {
+            background: #f8fafc;
+            border: 1px solid #dbe4f0;
+            border-radius: 14px;
+            padding: 16px;
+        }
+        .match-line {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 8px;
+            align-items: center;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        .team {
+            font-weight: 700;
+            word-break: break-word;
+        }
+        .score {
+            color: #123c7a;
+            font-size: 1.3rem;
+            font-weight: 800;
+            min-width: 66px;
+        }
+        .meta {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 12px;
+            color: #6b7280;
+            font-size: 0.92rem;
+        }
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        .badge-open {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .badge-locked {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .prediction-inputs,
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .prediction-inputs {
+            margin-bottom: 12px;
+        }
+        input, button {
+            font: inherit;
+        }
+        .control-input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            background: #fff;
+        }
+        .control-input:focus {
+            outline: 2px solid #93c5fd;
+            border-color: #60a5fa;
+        }
+        .btn {
+            border: none;
+            cursor: pointer;
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-weight: 700;
+            transition: 0.2s ease;
+        }
+        .btn:hover { transform: translateY(-1px); }
+        .btn-primary { background: #2563eb; color: #fff; }
+        .btn-secondary { background: #0f766e; color: #fff; }
+        .btn-danger { background: #dc2626; color: #fff; }
+        .btn-light { background: #eef2ff; color: #1e3a8a; }
+        .btn-small {
+            padding: 8px 10px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+        .empty {
+            padding: 18px;
+            text-align: center;
+            color: #6b7280;
+            background: #f8fafc;
+            border-radius: 14px;
+        }
+        .message {
+            display: none;
+            padding: 12px 14px;
+            border-radius: 12px;
+            margin-top: 14px;
+            line-height: 1.6;
+        }
+        .message.show { display: block; }
+        .message.error { background: #fee2e2; color: #991b1b; }
+        .message.success { background: #dcfce7; color: #166534; }
+        .message.info { background: #eff6ff; color: #1d4ed8; }
+        .saving {
+            color: #1d4ed8;
+            font-size: 0.95rem;
+            margin-top: 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: right;
+            vertical-align: top;
+        }
+        th {
+            color: #123c7a;
+            background: #f8fafc;
+        }
+        .admin-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
+            gap: 20px;
+        }
+        .muted {
+            color: #6b7280;
+            line-height: 1.7;
+        }
+        @media (max-width: 900px) {
+            .admin-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+            .container { padding: 14px; }
+            header h1 { font-size: 1.85rem; }
+            .top-bar { align-items: stretch; }
+            .top-actions, .navbar { flex-direction: column; }
+            .top-actions .btn, .navbar .nav { width: 100%; }
+            .match-line { grid-template-columns: 1fr; }
+            .prediction-inputs, .form-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            table { font-size: 0.9rem; display: block; overflow-x: auto; }
+        }
     </style>
 </head>
 <body>
-
-<!-- Login Screen -->
-<div id="loginScreen" class="login-screen">
-    <div class="login-card">
-        <h2>👋 مرحباً!</h2>
-        <p>أدخل اسمك للدخول</p>
-        <input type="text" id="userName" placeholder="اسمك" />
-        <button onclick="doLogin()">دخول 🎉</button>
-        <div class="loading" id="loginStatus"></div>
-        <div class="error" id="errorMsg" style="display:none;"></div>
-    </div>
-</div>
-
-<!-- Main App -->
-<div id="mainApp">
-    <div class="container">
-        <header>
-            <h1>⚽ كأس العالم 2026 بيت نانا</h1>
-            <p>توقعات ونتائج المباريات</p>
-        </header>
-
-        <div class="user-info">
-            <span id="greeting">مرحباً</span>
-            <button onclick="doLogout()" class="btn btn-danger">خروج</button>
-        </div>
-
-        <nav class="navbar">
-            <button class="nav active" onclick="switchTab('dash', this)">📊 لوحة التحكم</button>
-            <button class="nav" onclick="switchTab('pred', this)">🎯 التوقعات</button>
-            <button class="nav" onclick="switchTab('board', this)">🏆 الترتيب</button>
-            <button class="nav" onclick="switchTab('admin', this)">⚙️ إدارة</button>
-        </nav>
-
-        <!-- Dashboard -->
-        <div id="dash" class="view active">
-            <h2>📊 لوحة التحكم</h2>
-            <div class="stats-grid">
-                <div class="stat-card"><div class="stat-label">المشاركون</div><div class="stat-value" id="sp">0</div></div>
-                <div class="stat-card"><div class="stat-label">المباريات</div><div class="stat-value" id="sm">0</div></div>
-                <div class="stat-card"><div class="stat-label">التوقعات</div><div class="stat-value" id="st">0</div></div>
-                <div class="stat-card highlight"><div class="stat-label">أعلى نقاط</div><div class="stat-value" id="sx">0</div></div>
-            </div>
-            <div class="section">
-                <h3>🏆 أفضل 5 لاعبين</h3>
-                <div id="top5"></div>
-            </div>
-        </div>
-
-        <!-- Predictions -->
-        <div id="pred" class="view">
-            <h2>🎯 التوقعات</h2>
-            <div id="matches"></div>
-        </div>
-
-        <!-- Leaderboard -->
-        <div id="board" class="view">
-            <h2>🏆 جدول الترتيب</h2>
-            <div id="board-table"></div>
-        </div>
-
-        <!-- Admin -->
-        <div id="admin" class="view">
-            <h2>⚙️ الإدارة</h2>
-            <div class="section">
-                <h3>➕ إضافة مشارك</h3>
-                <input type="text" id="newName" placeholder="اسم المشارك" class="control-input" />
-                <button onclick="addPlayer()" class="btn btn-primary">إضافة</button>
-            </div>
-            <div class="section">
-                <h3>➕ إضافة مباراة</h3>
-                <input type="text" id="team1" placeholder="الفريق الأول" class="control-input" />
-                <input type="text" id="team2" placeholder="الفريق الثاني" class="control-input" />
-                <input type="datetime-local" id="matchTime" class="control-input" />
-                <button onclick="addMatch()" class="btn btn-primary">إضافة</button>
-            </div>
-            <div class="section" id="admin-players"></div>
-            <div class="section" id="admin-matches"></div>
+    <div id="loginScreen" class="login-screen">
+        <div class="login-card">
+            <h1>⚽ كأس العالم في بيت نانا</h1>
+            <p>كل مشترك يدخل توقعاته للمباريات، والنتيجة الصحيحة بالكامل = 5 نقاط، والفائز الصحيح فقط = نقطتين.</p>
+            <p>إذا دخلت مرة واحدة، اسمك وتوقعاتك تنحفظ على هذا الجهاز تلقائياً.</p>
+            <input id="userName" class="control-input" type="text" placeholder="اكتب اسمك هنا" maxlength="40">
+            <button id="loginBtn" class="btn btn-primary" style="width:100%; margin-top:12px;">دخول</button>
+            <div class="hint">رابط الصفحة تقدر تشاركه مع أي شخص، وكل المشاركين يشوفون نفس الترتيب مباشرة.</div>
+            <div id="loginMessage" class="message info"></div>
         </div>
     </div>
-</div>
 
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
+    <div id="mainApp" style="display:none;">
+        <div class="container">
+            <header>
+                <h1>⚽ كأس العالم في بيت نانا</h1>
+                <p>توقعات المباريات + لوحة ترتيب مشتركة لكل المشاركين</p>
+            </header>
 
-<script>
-// Firebase Config
-const firebaseConfig = {
-    apiKey: "AIzaSyDzV0e-4ZvLJ7kEHQ1H3LZKrHo0g3YqGOA",
-    authDomain: "world-cup-nana-b43d2.firebaseapp.com",
-    databaseURL: "https://world-cup-nana-b43d2-default-rtdb.firebaseio.com",
-    projectId: "world-cup-nana-b43d2",
-    storageBucket: "world-cup-nana-b43d2.appspot.com",
-    messagingSenderId: "1003161223635",
-    appId: "1:1003161223635:web:8c6a1f8d4e5f7a9b0c1d2e"
-};
+            <div class="top-bar">
+                <div>
+                    <div id="greeting" style="font-weight:800; color:#123c7a; margin-bottom:4px;">👋</div>
+                    <div class="muted">اسمك محفوظ هنا، وما تحتاج تعيد التسجيل كل مرة.</div>
+                </div>
+                <div class="top-actions">
+                    <button id="shareBtn" class="btn btn-light">🔗 نسخ الرابط</button>
+                    <button id="logoutBtn" class="btn btn-danger">خروج</button>
+                </div>
+            </div>
+            <div id="appStatus" class="message"></div>
 
-let firebase_initialized = false;
-let db = null;
+            <nav class="navbar">
+                <button class="nav active" data-view="dashboard">📊 الرئيسية</button>
+                <button class="nav" data-view="predictions">🎯 التوقعات</button>
+                <button class="nav" data-view="leaderboard">🏆 الترتيب</button>
+                <button class="nav" data-view="admin">⚙️ الإدارة</button>
+            </nav>
 
-try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.database();
-    firebase_initialized = true;
-    console.log('✅ Firebase متصل');
-} catch(e) {
-    console.log('❌ خطأ Firebase:', e);
-}
+            <section id="dashboard" class="view active">
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-label">المشاركون</div><div id="statPlayers" class="stat-value">0</div></div>
+                    <div class="stat-card"><div class="stat-label">المباريات</div><div id="statMatches" class="stat-value">0</div></div>
+                    <div class="stat-card"><div class="stat-label">التوقعات المكتملة</div><div id="statPredictions" class="stat-value">0</div></div>
+                    <div class="stat-card highlight"><div class="stat-label">أعلى نقاط</div><div id="statTop" class="stat-value">0</div></div>
+                </div>
 
-const USER_KEY = 'wc_nana_user';
-const ADMIN_PASS = '12345';
+                <div class="section">
+                    <div class="section-head">
+                        <h2>🏆 أفضل 5 مشاركين</h2>
+                        <div class="section-note">الترتيب يعتمد على النقاط ثم عدد النتائج الصحيحة بالكامل.</div>
+                    </div>
+                    <div id="topFive"></div>
+                </div>
 
-let currentUser = JSON.parse(localStorage.getItem(USER_KEY));
-let isAdmin = false;
+                <div class="section">
+                    <h2>📅 أقرب المباريات</h2>
+                    <div id="nextMatches" class="matches-grid"></div>
+                </div>
+            </section>
 
-let dbData = {
-    players: [],
-    matches: [],
-    predictions: {}
-};
+            <section id="predictions" class="view">
+                <div class="section">
+                    <div class="section-head">
+                        <div>
+                            <h2>🎯 توقعاتك</h2>
+                            <div class="section-note">التوقع يتقفل وقت بداية المباراة. تقدر تعدل قبلها فقط.</div>
+                        </div>
+                        <div id="predictionSaving" class="saving"></div>
+                    </div>
+                    <div id="matchesList" class="matches-grid"></div>
+                </div>
+            </section>
 
-// الاستماع للتغييرات من Firebase
-if(firebase_initialized && db) {
-    db.ref('/').on('value', snapshot => {
-        if(snapshot.exists()) {
-            dbData = snapshot.val();
-            if(currentUser) render();
+            <section id="leaderboard" class="view">
+                <div class="section">
+                    <h2>🏆 جدول الترتيب</h2>
+                    <div id="leaderboardTable"></div>
+                </div>
+            </section>
+
+            <section id="admin" class="view">
+                <div class="section">
+                    <h2>⚙️ الإدارة</h2>
+                    <p class="muted">هذه الصفحة محمية بكلمة مرور داخلية. من هنا تقدر تضيف مباريات، تسجل النتائج، وتحذف المشاركين أو المباريات.</p>
+                    <div id="adminLockedState" class="message info show">افتح رابط الإدارة الخاص على جهازك أول مرة، وبعدها ادخل بكلمة المرور من زر الإدارة.</div>
+                </div>
+
+                <div id="adminContent" style="display:none;">
+                    <div class="admin-grid">
+                        <div>
+                            <div class="section">
+                                <h3>➕ إضافة مباراة</h3>
+                                <div class="form-grid" style="margin-bottom:10px;">
+                                    <input id="homeTeam" class="control-input" type="text" placeholder="الفريق الأول" maxlength="40">
+                                    <input id="awayTeam" class="control-input" type="text" placeholder="الفريق الثاني" maxlength="40">
+                                </div>
+                                <input id="kickoff" class="control-input" type="datetime-local" style="margin-bottom:10px;">
+                                <button id="addMatchBtn" class="btn btn-primary">إضافة المباراة</button>
+                            </div>
+
+                            <div class="section">
+                                <h3>⚽ إدارة المباريات</h3>
+                                <div id="adminMatches"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="section">
+                                <h3>👥 إدارة المشاركين</h3>
+                                <div id="adminPlayers"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        const DATABASE_URL = 'https://world-cup-nana-b43d2-default-rtdb.firebaseio.com';
+        const DEFAULT_DATA_PATH = '/nanaWorldCup2026';
+        const USER_KEY = 'nana_world_cup_current_user';
+        const LOCAL_CACHE_KEY = 'nana_world_cup_cache_v1';
+        const ADMIN_PASSWORD_KEY = 'nana_world_cup_admin_password';
+        const ADMIN_URL_PARAM = 'admin';
+        const LEGACY_USER_KEYS = ['wc_nana_user', 'wc2026_user'];
+        const LEGACY_CACHE_KEYS = ['wc2026_pro_v3'];
+
+        let currentUser = readStoredUser();
+        let appData = createEmptyData();
+        let isAdmin = false;
+        let loading = false;
+        let pollingId = null;
+        let hasPendingLocalChanges = false;
+        let activeDataPath = DEFAULT_DATA_PATH;
+        let hasResolvedDataPath = false;
+
+        function createEmptyData() {
+            return {
+                players: {},
+                matches: {},
+                predictions: {}
+            };
         }
-    }, error => {
-        console.log('❌ خطأ في قراءة البيانات:', error);
-    });
-}
 
-function doLogin() {
-    if(!firebase_initialized) {
-        showError('Firebase ما متصل! حاول لاحقاً');
-        return;
-    }
-
-    let name = document.getElementById('userName').value.trim();
-    if(!name) { 
-        showError('اكتب اسمك!');
-        return; 
-    }
-    
-    document.getElementById('loginStatus').textContent = 'جاري التحقق...';
-    document.getElementById('errorMsg').style.display = 'none';
-    
-    db.ref('players').once('value', snapshot => {
-        let players = snapshot.val() || {};
-        let playerKey = Object.keys(players).find(k => players[k].name === name);
-        
-        if(!playerKey) {
-            playerKey = 'p' + Date.now();
-            db.ref('players/' + playerKey).set({name: name}).then(() => {
-                successLogin(playerKey, name);
-            }).catch(err => {
-                showError('خطأ في الحفظ: ' + err.message);
-            });
-        } else {
-            successLogin(playerKey, name);
+        function legacyListToMap(items = []) {
+            return Array.isArray(items)
+                ? items.reduce((result, item) => {
+                    if (!item?.id) return result;
+                    result[item.id] = item;
+                    return result;
+                }, {})
+                : {};
         }
-    }, error => {
-        showError('خطأ في الاتصال: ' + error.message);
-    });
-}
 
-function successLogin(playerKey, name) {
-    currentUser = {id: playerKey, name: name};
-    localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
-    
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
-    document.getElementById('greeting').textContent = '👋 ' + currentUser.name;
-    render();
-}
+        function normalizeLegacyData(remote) {
+            if (!remote || typeof remote !== 'object') {
+                return createEmptyData();
+            }
 
-function showError(msg) {
-    document.getElementById('loginStatus').textContent = '';
-    document.getElementById('errorMsg').textContent = msg;
-    document.getElementById('errorMsg').style.display = 'block';
-}
-
-function doLogout() {
-    currentUser = null;
-    localStorage.removeItem(USER_KEY);
-    document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('mainApp').style.display = 'none';
-    document.getElementById('userName').value = '';
-    document.getElementById('loginStatus').textContent = '';
-    document.getElementById('errorMsg').style.display = 'none';
-}
-
-function switchTab(tab, btn) {
-    document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
-    document.getElementById(tab).classList.add('active');
-    document.querySelectorAll('.nav').forEach(x => x.classList.remove('active'));
-    btn.classList.add('active');
-    
-    if(tab === 'admin') {
-        let pass = prompt('كلمة مرور الإدارة:');
-        if(pass !== ADMIN_PASS) {
-            alert('كلمة المرور خاطئة!');
-            switchTab('dash', document.querySelector('.nav'));
-            return;
+            return {
+                players: Array.isArray(remote.players) ? legacyListToMap(remote.players) : normalizeData(remote).players,
+                matches: Array.isArray(remote.matches) ? legacyListToMap(remote.matches) : normalizeData(remote).matches,
+                predictions: remote.predictions && typeof remote.predictions === 'object' ? remote.predictions : {}
+            };
         }
-        isAdmin = true;
-    }
-    render();
-}
 
-function addPlayer() {
-    if(!isAdmin) return;
-    let n = document.getElementById('newName').value.trim();
-    if(!n) { alert('اكتب اسم المشارك!'); return; }
-    
-    db.ref('players').once('value').then(snapshot => {
-        let players = snapshot.val() || {};
-        if(Object.values(players).find(p => p.name === n)) {
-            alert('الاسم موجود!');
-            return;
+        function normalizeData(remote) {
+            return {
+                players: remote?.players && typeof remote.players === 'object' ? remote.players : {},
+                matches: remote?.matches && typeof remote.matches === 'object' ? remote.matches : {},
+                predictions: remote?.predictions && typeof remote.predictions === 'object' ? remote.predictions : {}
+            };
         }
-        db.ref('players/p' + Date.now()).set({name: n});
-        document.getElementById('newName').value = '';
-    });
-}
 
-function delPlayer(id) {
-    if(!isAdmin) return;
-    if(confirm('حذف المشارك؟')) {
-        db.ref('players/' + id).remove();
-        db.ref('predictions/' + id).remove();
-    }
-}
+        function readLocalJson(key) {
+            try {
+                return JSON.parse(localStorage.getItem(key));
+            } catch {
+                return null;
+            }
+        }
 
-function addMatch() {
-    if(!isAdmin) return;
-    let t1 = document.getElementById('team1').value.trim();
-    let t2 = document.getElementById('team2').value.trim();
-    let tm = document.getElementById('matchTime').value;
-    if(!t1 || !t2 || !tm) { alert('أكمل البيانات!'); return; }
-    
-    db.ref('matches/m' + Date.now()).set({
-        home: t1,
-        away: t2,
-        kickoff: tm,
-        homeScore: null,
-        awayScore: null
-    });
-    document.getElementById('team1').value = '';
-    document.getElementById('team2').value = '';
-    document.getElementById('matchTime').value = '';
-}
+        function readStoredUser() {
+            const storedUser = readLocalJson(USER_KEY);
+            if (storedUser?.id && storedUser?.name) {
+                return storedUser;
+            }
 
-function delMatch(id) {
-    if(!isAdmin) return;
-    if(confirm('حذف المباراة؟')) {
-        db.ref('matches/' + id).remove();
-        db.ref('predictions').once('value').then(snapshot => {
-            let preds = snapshot.val() || {};
-            Object.keys(preds).forEach(pid => {
-                if(preds[pid][id]) {
-                    db.ref('predictions/' + pid + '/' + id).remove();
+            for (const legacyKey of LEGACY_USER_KEYS) {
+                const legacyUser = readLocalJson(legacyKey);
+                if (legacyUser?.id && legacyUser?.name) {
+                    writeLocalJson(USER_KEY, legacyUser);
+                    return legacyUser;
                 }
+            }
+
+            return null;
+        }
+
+        function writeLocalJson(key, value) {
+            localStorage.setItem(key, JSON.stringify(value));
+        }
+
+        function readStoredAdminPassword() {
+            const url = new URL(window.location.href);
+            const adminFromUrl = normalizeText(url.searchParams.get(ADMIN_URL_PARAM), 80);
+            if (adminFromUrl) {
+                localStorage.setItem(ADMIN_PASSWORD_KEY, adminFromUrl);
+                url.searchParams.delete(ADMIN_URL_PARAM);
+                window.history.replaceState({}, document.title, url.toString());
+                return adminFromUrl;
+            }
+
+            return normalizeText(localStorage.getItem(ADMIN_PASSWORD_KEY) || '', 80);
+        }
+
+        function getShareableUrl() {
+            const url = new URL(window.location.href);
+            url.searchParams.delete(ADMIN_URL_PARAM);
+            return url.toString();
+        }
+
+        function readCachedData() {
+            const cachedData = readLocalJson(LOCAL_CACHE_KEY);
+            if (cachedData) {
+                return normalizeData(cachedData);
+            }
+
+            for (const legacyKey of LEGACY_CACHE_KEYS) {
+                const legacyData = readLocalJson(legacyKey);
+                if (legacyData) {
+                    const migratedData = normalizeLegacyData(legacyData);
+                    writeLocalJson(LOCAL_CACHE_KEY, migratedData);
+                    return migratedData;
+                }
+            }
+
+            return createEmptyData();
+        }
+
+        function persistCache() {
+            writeLocalJson(LOCAL_CACHE_KEY, appData);
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function normalizeText(value, maxLength = 40) {
+            return String(value ?? '').trim().replace(/\s+/g, ' ').slice(0, maxLength);
+        }
+
+        function createId(prefix) {
+            return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+        }
+
+        function hasAppDataShape(value) {
+            return Boolean(value)
+                && typeof value === 'object'
+                && ['players', 'matches', 'predictions'].some((key) => Object.prototype.hasOwnProperty.call(value, key));
+        }
+
+        function nodeUrl(path = '', basePath = activeDataPath) {
+            const normalizedBase = basePath ? (basePath.startsWith('/') ? basePath : `/${basePath}`) : '';
+            const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+            const nodePath = `${normalizedBase}${normalizedPath}` || '/';
+            return `${DATABASE_URL}${nodePath}.json`;
+        }
+
+        async function rawApiRequest(basePath, path = '', method = 'GET', body) {
+            const response = await fetch(nodeUrl(path, basePath), {
+                method,
+                cache: 'no-store',
+                headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+                body: body === undefined ? undefined : JSON.stringify(body)
             });
-        });
-    }
-}
 
-function setResult(id, h, a) {
-    if(!isAdmin) return;
-    db.ref('matches/' + id).update({
-        homeScore: h === '' ? null : +h,
-        awayScore: a === '' ? null : +a
-    });
-}
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
 
-function setPred(mid, side, val) {
-    let matches = dbData.matches || {};
-    let m = Object.values(matches).find(x => x && (Object.keys(matches).find(k => matches[k] === x) === mid));
-    
-    if(new Date() >= new Date(m.kickoff)) { alert('المباراة مغلقة!'); return; }
-    
-    db.ref('predictions/' + currentUser.id + '/' + mid).set({
-        home: (dbData.predictions[currentUser.id]?.[mid]?.home || ''),
-        away: (dbData.predictions[currentUser.id]?.[mid]?.away || '')
-    }, (error) => {
-        if(!error) {
-            db.ref('predictions/' + currentUser.id + '/' + mid).update({
-                [side]: val
+            return response.status === 204 ? null : response.json();
+        }
+
+        async function resolveDataPath(force = false) {
+            if (hasResolvedDataPath && !force) {
+                return activeDataPath;
+            }
+
+            let lastError = null;
+            let preferredData = null;
+            let preferredRequestSucceeded = false;
+
+            try {
+                preferredData = await rawApiRequest(DEFAULT_DATA_PATH, '', 'GET');
+                preferredRequestSucceeded = true;
+                if (hasAppDataShape(preferredData)) {
+                    activeDataPath = DEFAULT_DATA_PATH;
+                    hasResolvedDataPath = true;
+                    return activeDataPath;
+                }
+            } catch (error) {
+                lastError = error;
+            }
+
+            try {
+                const legacyData = await rawApiRequest('', '', 'GET');
+                if (hasAppDataShape(legacyData)) {
+                    activeDataPath = '';
+                    hasResolvedDataPath = true;
+                    return activeDataPath;
+                }
+            } catch (error) {
+                lastError = error;
+            }
+
+            if (preferredRequestSucceeded && preferredData === null) {
+                activeDataPath = DEFAULT_DATA_PATH;
+                hasResolvedDataPath = true;
+                return activeDataPath;
+            }
+
+            if (lastError) {
+                throw lastError;
+            }
+
+            activeDataPath = DEFAULT_DATA_PATH;
+            hasResolvedDataPath = true;
+            return activeDataPath;
+        }
+
+        async function apiRequest(path = '', method = 'GET', body) {
+            const basePath = await resolveDataPath();
+            return rawApiRequest(basePath, path, method, body);
+        }
+
+        async function readRemoteData() {
+            const remote = await apiRequest('', 'GET');
+            if (!remote) {
+                const initial = createEmptyData();
+                await apiRequest('', 'PUT', initial);
+                appData = initial;
+                persistCache();
+                return initial;
+            }
+
+            const normalized = normalizeData(remote);
+            appData = normalized;
+            persistCache();
+            return normalized;
+        }
+
+        function playerEntries() {
+            return Object.entries(appData.players || {});
+        }
+
+        function matchEntries() {
+            return Object.entries(appData.matches || {}).sort(([, a], [, b]) => {
+                return new Date(a.kickoff || 0) - new Date(b.kickoff || 0);
             });
         }
-    });
-}
 
-function getScore(m, p) {
-    if(!p || p.home === '' || p.away === '' || m.homeScore === null || m.awayScore === null) return 0;
-    if(+p.home === +m.homeScore && +p.away === +m.awayScore) return 5;
-    let res1 = (+m.homeScore > +m.awayScore) ? 'H' : (+m.homeScore < +m.awayScore) ? 'A' : 'D';
-    let res2 = (+p.home > +p.away) ? 'H' : (+p.home < +p.away) ? 'A' : 'D';
-    return res1 === res2 ? 2 : 0;
-}
+        function getPrediction(playerId, matchId) {
+            return appData.predictions?.[playerId]?.[matchId] || { home: '', away: '' };
+        }
 
-function getStandings() {
-    let players = dbData.players || {};
-    let matches = dbData.matches || {};
-    let predictions = dbData.predictions || {};
-    
-    return Object.keys(players).map(pid => {
-        let pts = Object.keys(matches).reduce((s, mid) => {
-            let m = matches[mid];
-            let pr = predictions[pid]?.[mid];
-            return s + getScore(m, pr);
-        }, 0);
-        return {
-            name: players[pid].name,
-            id: pid,
-            pts: pts,
-            cnt: Object.keys(predictions[pid] || {}).length
-        };
-    }).sort((a, b) => b.pts - a.pts);
-}
+        function isCompletePrediction(prediction) {
+            return prediction && prediction.home !== '' && prediction.away !== '';
+        }
 
-function render() {
-    if(!currentUser) return;
-    
-    let players = dbData.players || {};
-    let matches = dbData.matches || {};
-    let predictions = dbData.predictions || {};
-    
-    document.getElementById('sp').textContent = Object.keys(players).length;
-    document.getElementById('sm').textContent = Object.keys(matches).length;
-    document.getElementById('st').textContent = Object.keys(predictions).reduce((s, p) => s + Object.keys(predictions[p] || {}).length, 0);
-    
-    let standings = getStandings();
-    document.getElementById('sx').textContent = standings[0]?.pts || 0;
-    
-    let st = standings.slice(0, 5);
-    document.getElementById('top5').innerHTML = '<table><tr><th>#</th><th>المشارك</th><th>النقاط</th></tr>' + 
-        st.map((p, i) => `<tr><td>${i+1}</td><td>${p.name}</td><td>${p.pts}</td></tr>`).join('') + 
-        '</table>';
-    
-    let matchesHTML = Object.keys(matches).map(mid => {
-        let m = matches[mid];
-        let pr = predictions[currentUser.id]?.[mid] || {home: '', away: ''};
-        let locked = new Date() >= new Date(m.kickoff);
-        return `<div class="match-card">
-            <div class="match-line">
-                <div class="team">${m.home}</div>
-                <div class="score">${m.homeScore ?? '-'} : ${m.awayScore ?? '-'}</div>
-                <div class="team">${m.away}</div>
-            </div>
-            <div class="prediction-inputs">
-                <input type="number" ${locked ? 'disabled' : ''} value="${pr.home}" onchange="setPred('${mid}', 'home', this.value)" placeholder="أهداف">
-                <input type="number" ${locked ? 'disabled' : ''} value="${pr.away}" onchange="setPred('${mid}', 'away', this.value)" placeholder="أهداف">
-            </div>
-            <p>نقاطك: <b>${getScore(m, pr)}</b> ${locked ? '🔒' : '✅'}</p>
-        </div>`;
-    }).join('');
-    document.getElementById('matches').innerHTML = matchesHTML || '<p>لا توجد مباريات</p>';
-    
-    let board = getStandings();
-    document.getElementById('board-table').innerHTML = '<table><tr><th>#</th><th>المشارك</th><th>النقاط</th><th>التوقعات</th></tr>' +
-        board.map((p, i) => `<tr><td>${i+1}</td><td>${p.name}</td><td>${p.pts}</td><td>${p.cnt}</td></tr>`).join('') +
-        '</table>';
-    
-    if(isAdmin) {
-        document.getElementById('admin-players').innerHTML = '<h3>👥 المشاركون ('+Object.keys(players).length+')</h3><table><tr><th>#</th><th>الاسم</th><th></th></tr>' +
-            Object.keys(players).map((pid, i) => `<tr><td>${i+1}</td><td>${players[pid].name}</td><td><button class="btn btn-danger btn-small" onclick="delPlayer('${pid}')">حذف</button></td></tr>`).join('') + '</table>';
-        document.getElementById('admin-matches').innerHTML = '<h3>⚽ المباريات ('+Object.keys(matches).length+')</h3><table><tr><th>المباراة</th><th>البداية</th><th>النتيجة</th><th></th></tr>' +
-            Object.keys(matches).map(mid => {
-                let m = matches[mid];
-                return `<tr><td>${m.home} ضد ${m.away}</td><td>${m.kickoff}</td><td><input style="width:50px" type="number" value="${m.homeScore ?? ''}" onchange="setResult('${mid}', this.value, this.parentElement.parentElement.querySelectorAll('input')[1].value)"> - <input style="width:50px" type="number" value="${m.awayScore ?? ''}" onchange="setResult('${mid}', this.parentElement.parentElement.querySelectorAll('input')[0].value, this.value)"></td><td><button class="btn btn-danger btn-small" onclick="delMatch('${mid}')">حذف</button></td></tr>`;
-            }).join('') + '</table>';
-    }
-}
+        function isLocked(match) {
+            return !match?.kickoff ? false : new Date() >= new Date(match.kickoff);
+        }
 
-// Init
-if(currentUser) {
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
-    document.getElementById('greeting').textContent = '👋 ' + currentUser.name;
-    render();
-}
-</script>
+        function outcome(home, away) {
+            if (+home > +away) return 'H';
+            if (+home < +away) return 'A';
+            return 'D';
+        }
 
+        function scorePrediction(match, prediction) {
+            if (!match || !prediction || !isCompletePrediction(prediction)) return 0;
+            if (match.homeScore === null || match.awayScore === null) return 0;
+
+            if (+prediction.home === +match.homeScore && +prediction.away === +match.awayScore) {
+                return 5;
+            }
+
+            return outcome(prediction.home, prediction.away) === outcome(match.homeScore, match.awayScore) ? 2 : 0;
+        }
+
+        function getStandings() {
+            return playerEntries().map(([playerId, player]) => {
+                let points = 0;
+                let exactHits = 0;
+                let winnerHits = 0;
+                let predictionsCount = 0;
+
+                matchEntries().forEach(([matchId, match]) => {
+                    const prediction = getPrediction(playerId, matchId);
+                    if (!isCompletePrediction(prediction)) return;
+
+                    predictionsCount += 1;
+                    const score = scorePrediction(match, prediction);
+                    points += score;
+                    if (score === 5) exactHits += 1;
+                    if (score === 2) winnerHits += 1;
+                });
+
+                return {
+                    id: playerId,
+                    name: player.name,
+                    points,
+                    exactHits,
+                    winnerHits,
+                    predictionsCount
+                };
+            }).sort((a, b) => {
+                if (b.points !== a.points) return b.points - a.points;
+                if (b.exactHits !== a.exactHits) return b.exactHits - a.exactHits;
+                if (b.winnerHits !== a.winnerHits) return b.winnerHits - a.winnerHits;
+                return a.name.localeCompare(b.name, 'ar');
+            });
+        }
+
+        function totalCompletedPredictions() {
+            return Object.values(appData.predictions || {}).reduce((sum, playerPredictions) => {
+                return sum + Object.values(playerPredictions || {}).filter(isCompletePrediction).length;
+            }, 0);
+        }
+
+        function formatKickoff(kickoff) {
+            if (!kickoff) return 'بدون وقت';
+            const date = new Date(kickoff);
+            if (Number.isNaN(date.getTime())) return escapeHtml(kickoff);
+            return new Intl.DateTimeFormat('ar', {
+                day: 'numeric',
+                month: 'short',
+                hour: 'numeric',
+                minute: '2-digit'
+            }).format(date);
+        }
+
+        function renderTable(headers, rows, emptyMessage) {
+            if (!rows.length) {
+                return `<div class="empty">${escapeHtml(emptyMessage)}</div>`;
+            }
+
+            return `
+                <table>
+                    <tr>${headers.map(header => `<th>${escapeHtml(header)}</th>`).join('')}</tr>
+                    ${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
+                </table>
+            `;
+        }
+
+        function showMessage(id, text, type = 'info') {
+            const element = document.getElementById(id);
+            element.className = `message show ${type}`;
+            element.textContent = text;
+        }
+
+        function clearMessage(id) {
+            const element = document.getElementById(id);
+            element.className = 'message';
+            element.textContent = '';
+        }
+
+        function setSaving(text = '') {
+            document.getElementById('predictionSaving').textContent = text;
+        }
+
+        function showOfflineStatus() {
+            showMessage(
+                'appStatus',
+                'Firebase غير متاح حالياً. التطبيق شغال على النسخة المحفوظة في هذا الجهاز، وأي تغييرات جديدة ستُحفظ محلياً إلى أن يرجع الاتصال.',
+                'info'
+            );
+        }
+
+        function clearOfflineStatus() {
+            if (!hasPendingLocalChanges) {
+                clearMessage('appStatus');
+            }
+        }
+
+        async function syncPendingChanges() {
+            if (!hasPendingLocalChanges) return;
+            await apiRequest('', 'PUT', appData);
+            hasPendingLocalChanges = false;
+            persistCache();
+            showMessage('appStatus', 'رجع الاتصال وتمت مزامنة التغييرات مع Firebase ✅', 'success');
+        }
+
+        async function refreshData(showLoginError = false) {
+            if (loading) return;
+            loading = true;
+
+            try {
+                await syncPendingChanges();
+                appData = await readRemoteData();
+                clearOfflineStatus();
+
+                if (currentUser && !appData.players[currentUser.id]) {
+                    await logout(true, 'تم حذف اسمك من الإدارة، سجّل دخول من جديد.');
+                    return;
+                }
+
+                render();
+            } catch (error) {
+                console.error(error);
+                appData = readCachedData();
+                if (currentUser) {
+                    render();
+                    showOfflineStatus();
+                }
+                if (showLoginError) {
+                    showMessage('loginMessage', 'تعذر الاتصال بقاعدة البيانات حالياً. إذا عندك نسخة محفوظة على هذا الجهاز تقدر تكمل بها مؤقتاً.', 'info');
+                }
+            } finally {
+                loading = false;
+            }
+        }
+
+        function showApp() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+        }
+
+        function showLogin() {
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+        }
+
+        async function login() {
+            const name = normalizeText(document.getElementById('userName').value);
+            if (!name) {
+                showMessage('loginMessage', 'اكتب اسمك أولاً.', 'error');
+                return;
+            }
+
+            showMessage('loginMessage', 'جاري الدخول...', 'info');
+
+            try {
+                let usedOfflineFallback = false;
+                let createdNewPlayer = false;
+                let data;
+                try {
+                    data = await readRemoteData();
+                } catch (error) {
+                    console.error(error);
+                    usedOfflineFallback = true;
+                    data = readCachedData();
+                }
+                appData = data;
+
+                const existing = playerEntries().find(([, player]) => normalizeText(player.name).toLowerCase() === name.toLowerCase());
+                let playerId = existing?.[0];
+
+                if (!playerId) {
+                    createdNewPlayer = true;
+                    playerId = createId('p');
+                    const payload = {
+                        name,
+                        createdAt: new Date().toISOString()
+                    };
+                    appData.players[playerId] = payload;
+                    persistCache();
+                    if (usedOfflineFallback) {
+                        hasPendingLocalChanges = true;
+                    } else {
+                        await apiRequest(`/players/${playerId}`, 'PUT', payload);
+                    }
+                }
+
+                currentUser = { id: playerId, name };
+                writeLocalJson(USER_KEY, currentUser);
+                clearMessage('loginMessage');
+                document.getElementById('userName').value = '';
+                showApp();
+                render();
+                if (usedOfflineFallback || hasPendingLocalChanges) {
+                    showOfflineStatus();
+                } else if (createdNewPlayer) {
+                    clearOfflineStatus();
+                } else {
+                    clearOfflineStatus();
+                    await refreshData();
+                }
+            } catch (error) {
+                console.error(error);
+                showMessage('loginMessage', 'تعذر تسجيل الدخول الآن. تأكد من الإنترنت ثم جرّب مرة ثانية.', 'error');
+            }
+        }
+
+        async function logout(showNotice = false, notice = '') {
+            currentUser = null;
+            isAdmin = false;
+            localStorage.removeItem(USER_KEY);
+            showLogin();
+            document.querySelectorAll('.nav').forEach((button) => {
+                button.classList.toggle('active', button.dataset.view === 'dashboard');
+            });
+            document.querySelectorAll('.view').forEach((view) => {
+                view.classList.toggle('active', view.id === 'dashboard');
+            });
+            document.getElementById('adminContent').style.display = 'none';
+            document.getElementById('adminLockedState').className = 'message info show';
+            document.getElementById('adminLockedState').textContent = 'افتح رابط الإدارة الخاص على جهازك أول مرة، وبعدها ادخل بكلمة المرور من زر الإدارة.';
+            if (showNotice && notice) {
+                showMessage('loginMessage', notice, 'info');
+            } else {
+                clearMessage('loginMessage');
+            }
+        }
+
+        async function copyLink() {
+            try {
+                await navigator.clipboard.writeText(getShareableUrl());
+                alert('تم نسخ الرابط ✅');
+            } catch {
+                alert('انسخ الرابط من المتصفح يدوياً.');
+            }
+        }
+
+        async function savePrediction(matchId, side, value) {
+            if (!currentUser) return;
+            const match = appData.matches[matchId];
+            if (!match) return;
+            if (isLocked(match)) {
+                alert('المباراة بدأت، التوقع مقفل الآن.');
+                return;
+            }
+
+            const cleaned = value === '' ? '' : String(Math.max(0, Number(value) || 0));
+            const currentPrediction = getPrediction(currentUser.id, matchId);
+            const updatedPrediction = {
+                home: currentPrediction.home === '' ? '' : String(currentPrediction.home),
+                away: currentPrediction.away === '' ? '' : String(currentPrediction.away),
+                updatedAt: new Date().toISOString()
+            };
+            updatedPrediction[side] = cleaned;
+
+            setSaving('جاري حفظ التوقع...');
+            appData.predictions[currentUser.id] ||= {};
+
+            try {
+                if (updatedPrediction.home === '' && updatedPrediction.away === '') {
+                    delete appData.predictions[currentUser.id][matchId];
+                    persistCache();
+                    render();
+                    await apiRequest(`/predictions/${currentUser.id}/${matchId}`, 'DELETE');
+                } else {
+                    appData.predictions[currentUser.id][matchId] = updatedPrediction;
+                    persistCache();
+                    render();
+                    await apiRequest(`/predictions/${currentUser.id}/${matchId}`, 'PUT', updatedPrediction);
+                }
+
+                clearOfflineStatus();
+                setSaving('تم الحفظ ✅');
+                setTimeout(() => setSaving(''), 1200);
+            } catch (error) {
+                console.error(error);
+                hasPendingLocalChanges = true;
+                persistCache();
+                showOfflineStatus();
+                setSaving('تم الحفظ على هذا الجهاز مؤقتاً');
+            }
+        }
+
+        async function addMatch() {
+            if (!isAdmin) return;
+            const home = normalizeText(document.getElementById('homeTeam').value);
+            const away = normalizeText(document.getElementById('awayTeam').value);
+            const kickoff = document.getElementById('kickoff').value;
+
+            if (!home || !away || !kickoff) {
+                alert('أكمل بيانات المباراة.');
+                return;
+            }
+
+            if (home === away) {
+                alert('اختر فريقين مختلفين.');
+                return;
+            }
+
+            const matchId = createId('m');
+            const payload = {
+                home,
+                away,
+                kickoff,
+                homeScore: null,
+                awayScore: null,
+                createdAt: new Date().toISOString()
+            };
+            appData.matches[matchId] = payload;
+            persistCache();
+            render();
+
+            try {
+                await apiRequest(`/matches/${matchId}`, 'PUT', payload);
+                document.getElementById('homeTeam').value = '';
+                document.getElementById('awayTeam').value = '';
+                document.getElementById('kickoff').value = '';
+                clearOfflineStatus();
+            } catch (error) {
+                console.error(error);
+                hasPendingLocalChanges = true;
+                persistCache();
+                document.getElementById('homeTeam').value = '';
+                document.getElementById('awayTeam').value = '';
+                document.getElementById('kickoff').value = '';
+                showOfflineStatus();
+            }
+        }
+
+        async function setResult(matchId, homeScore, awayScore) {
+            if (!isAdmin) return;
+            const match = appData.matches[matchId];
+            if (!match) return;
+
+            const nextHome = homeScore === '' ? null : Math.max(0, Number(homeScore) || 0);
+            const nextAway = awayScore === '' ? null : Math.max(0, Number(awayScore) || 0);
+            const updated = {
+                ...match,
+                homeScore: nextHome,
+                awayScore: nextAway
+            };
+            appData.matches[matchId] = updated;
+            persistCache();
+            render();
+
+            try {
+                await apiRequest(`/matches/${matchId}`, 'PUT', updated);
+                clearOfflineStatus();
+            } catch (error) {
+                console.error(error);
+                hasPendingLocalChanges = true;
+                persistCache();
+                showOfflineStatus();
+            }
+        }
+
+        async function deletePlayer(playerId) {
+            if (!isAdmin) return;
+            const player = appData.players[playerId];
+            if (!player) return;
+            if (!confirm(`حذف المشارك ${player.name}؟`)) return;
+            delete appData.players[playerId];
+            delete appData.predictions[playerId];
+            persistCache();
+            render();
+
+            try {
+                await apiRequest(`/players/${playerId}`, 'DELETE');
+                await apiRequest(`/predictions/${playerId}`, 'DELETE');
+                clearOfflineStatus();
+            } catch (error) {
+                console.error(error);
+                hasPendingLocalChanges = true;
+                persistCache();
+                showOfflineStatus();
+            }
+        }
+
+        async function deleteMatch(matchId) {
+            if (!isAdmin) return;
+            const match = appData.matches[matchId];
+            if (!match) return;
+            if (!confirm(`حذف مباراة ${match.home} ضد ${match.away}؟`)) return;
+            const affectedPlayerIds = Object.keys(appData.predictions || {}).filter((playerId) => {
+                return Boolean(appData.predictions[playerId]?.[matchId]);
+            });
+            affectedPlayerIds.forEach((playerId) => {
+                delete appData.predictions[playerId][matchId];
+            });
+            delete appData.matches[matchId];
+            persistCache();
+            render();
+
+            try {
+                await apiRequest(`/matches/${matchId}`, 'DELETE');
+                await Promise.all(affectedPlayerIds.map((playerId) => apiRequest(`/predictions/${playerId}/${matchId}`, 'DELETE')));
+                clearOfflineStatus();
+            } catch (error) {
+                console.error(error);
+                hasPendingLocalChanges = true;
+                persistCache();
+                showOfflineStatus();
+            }
+        }
+
+        function openAdmin() {
+            const configuredPassword = readStoredAdminPassword();
+            if (!configuredPassword) {
+                alert('ما فيه رابط إدارة محفوظ على هذا الجهاز. افتح رابط الإدارة الخاص أول مرة ثم جرّب من جديد.');
+                return false;
+            }
+
+            const password = prompt('اكتب كلمة مرور الإدارة');
+            if (normalizeText(password, 80) !== configuredPassword) {
+                alert('كلمة المرور غير صحيحة.');
+                return false;
+            }
+
+            isAdmin = true;
+            document.getElementById('adminLockedState').className = 'message success show';
+            document.getElementById('adminLockedState').textContent = 'تم فتح الإدارة بنجاح.';
+            document.getElementById('adminContent').style.display = 'block';
+            return true;
+        }
+
+        function switchView(viewId) {
+            document.querySelectorAll('.view').forEach((view) => {
+                view.classList.toggle('active', view.id === viewId);
+            });
+            document.querySelectorAll('.nav').forEach((button) => {
+                button.classList.toggle('active', button.dataset.view === viewId);
+            });
+            render();
+        }
+
+        function renderDashboard() {
+            const standings = getStandings();
+            document.getElementById('statPlayers').textContent = playerEntries().length;
+            document.getElementById('statMatches').textContent = matchEntries().length;
+            document.getElementById('statPredictions').textContent = totalCompletedPredictions();
+            document.getElementById('statTop').textContent = standings[0]?.points || 0;
+
+            document.getElementById('topFive').innerHTML = renderTable(
+                ['#', 'المشارك', 'النقاط', 'نتائج كاملة'],
+                standings.slice(0, 5).map((player, index) => [
+                    String(index + 1),
+                    escapeHtml(player.name),
+                    String(player.points),
+                    String(player.exactHits)
+                ]),
+                'لا يوجد مشاركون حتى الآن.'
+            );
+
+            const nextMatches = matchEntries().slice(0, 5).map(([matchId, match]) => renderMatchCard(matchId, match, true)).join('');
+            document.getElementById('nextMatches').innerHTML = nextMatches || '<div class="empty">لا توجد مباريات حالياً.</div>';
+        }
+
+        function renderMatchCard(matchId, match, compact = false) {
+            const prediction = currentUser ? getPrediction(currentUser.id, matchId) : { home: '', away: '' };
+            const locked = isLocked(match);
+            const points = currentUser ? scorePrediction(match, prediction) : 0;
+
+            return `
+                <div class="match-card">
+                    <div class="meta">
+                        <span>${escapeHtml(formatKickoff(match.kickoff))}</span>
+                        <span class="badge ${locked ? 'badge-locked' : 'badge-open'}">${locked ? '🔒 مقفل' : '✅ مفتوح'}</span>
+                    </div>
+                    <div class="match-line">
+                        <div class="team">${escapeHtml(match.home)}</div>
+                        <div class="score">${match.homeScore ?? '-'} : ${match.awayScore ?? '-'}</div>
+                        <div class="team">${escapeHtml(match.away)}</div>
+                    </div>
+                    ${compact ? '' : `
+                        <div class="prediction-inputs">
+                            <input class="control-input" type="number" min="0" ${locked ? 'disabled' : ''} value="${prediction.home === '' ? '' : escapeHtml(prediction.home)}" data-match-id="${escapeHtml(matchId)}" data-prediction-side="home">
+                            <input class="control-input" type="number" min="0" ${locked ? 'disabled' : ''} value="${prediction.away === '' ? '' : escapeHtml(prediction.away)}" data-match-id="${escapeHtml(matchId)}" data-prediction-side="away">
+                        </div>
+                        <div class="muted">نقاطك على هذه المباراة: <strong>${points}</strong></div>
+                    `}
+                </div>
+            `;
+        }
+
+        function renderPredictions() {
+            const matchesHtml = matchEntries().map(([matchId, match]) => renderMatchCard(matchId, match)).join('');
+            document.getElementById('matchesList').innerHTML = matchesHtml || '<div class="empty">لا توجد مباريات مضافة بعد.</div>';
+        }
+
+        function renderLeaderboard() {
+            const standings = getStandings();
+            document.getElementById('leaderboardTable').innerHTML = renderTable(
+                ['#', 'المشارك', 'النقاط', 'نتائج كاملة', 'توقعات مكتملة'],
+                standings.map((player, index) => [
+                    String(index + 1),
+                    escapeHtml(player.name),
+                    String(player.points),
+                    String(player.exactHits),
+                    String(player.predictionsCount)
+                ]),
+                'لا يوجد ترتيب بعد.'
+            );
+        }
+
+        function renderAdmin() {
+            if (!isAdmin) {
+                document.getElementById('adminContent').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('adminContent').style.display = 'block';
+
+            const playersRows = playerEntries().map(([playerId, player], index) => [
+                String(index + 1),
+                escapeHtml(player.name),
+                String(getStandings().find((row) => row.id === playerId)?.points || 0),
+                `<button class="btn btn-danger btn-small" data-delete-player-id="${escapeHtml(playerId)}">حذف</button>`
+            ]);
+            document.getElementById('adminPlayers').innerHTML = renderTable(
+                ['#', 'الاسم', 'النقاط', ''],
+                playersRows,
+                'لا يوجد مشاركون.'
+            );
+
+            const matchesRows = matchEntries().map(([matchId, match]) => [
+                `${escapeHtml(match.home)}<br><span class="muted">ضد ${escapeHtml(match.away)}</span>`,
+                escapeHtml(formatKickoff(match.kickoff)),
+                `<div data-result-match="${escapeHtml(matchId)}" style="display:flex; gap:8px; align-items:center;"><input class="control-input" style="width:72px; padding:8px 10px;" type="number" min="0" value="${match.homeScore ?? ''}" data-result-side="home"><input class="control-input" style="width:72px; padding:8px 10px;" type="number" min="0" value="${match.awayScore ?? ''}" data-result-side="away"></div>`,
+                `<button class="btn btn-danger btn-small" data-delete-match-id="${escapeHtml(matchId)}">حذف</button>`
+            ]);
+            document.getElementById('adminMatches').innerHTML = renderTable(
+                ['المباراة', 'الوقت', 'النتيجة', ''],
+                matchesRows,
+                'لا توجد مباريات.'
+            );
+        }
+
+        function render() {
+            if (!currentUser) return;
+            document.getElementById('greeting').textContent = `👋 ${currentUser.name}`;
+            renderDashboard();
+            renderPredictions();
+            renderLeaderboard();
+            renderAdmin();
+        }
+
+        function bindEvents() {
+            document.getElementById('loginBtn').addEventListener('click', login);
+            document.getElementById('userName').addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') login();
+            });
+            document.getElementById('logoutBtn').addEventListener('click', () => logout());
+            document.getElementById('shareBtn').addEventListener('click', copyLink);
+            document.getElementById('addMatchBtn').addEventListener('click', addMatch);
+            document.getElementById('matchesList').addEventListener('change', (event) => {
+                const input = event.target.closest('[data-prediction-side]');
+                if (!input) return;
+                savePrediction(input.dataset.matchId, input.dataset.predictionSide, input.value);
+            });
+            document.getElementById('adminPlayers').addEventListener('click', (event) => {
+                const button = event.target.closest('[data-delete-player-id]');
+                if (!button) return;
+                deletePlayer(button.dataset.deletePlayerId);
+            });
+            document.getElementById('adminMatches').addEventListener('click', (event) => {
+                const button = event.target.closest('[data-delete-match-id]');
+                if (!button) return;
+                deleteMatch(button.dataset.deleteMatchId);
+            });
+            document.getElementById('adminMatches').addEventListener('change', (event) => {
+                const input = event.target.closest('[data-result-side]');
+                if (!input) return;
+                const row = input.closest('[data-result-match]');
+                if (!row) return;
+                const homeInput = row.querySelector('[data-result-side="home"]');
+                const awayInput = row.querySelector('[data-result-side="away"]');
+                setResult(row.dataset.resultMatch, homeInput?.value ?? '', awayInput?.value ?? '');
+            });
+
+            document.querySelectorAll('.nav').forEach((button) => {
+                button.addEventListener('click', () => {
+                    if (button.dataset.view === 'admin' && !isAdmin) {
+                        const unlocked = openAdmin();
+                        if (!unlocked) return;
+                    }
+                    switchView(button.dataset.view);
+                });
+            });
+
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && currentUser) refreshData();
+            });
+        }
+
+        async function init() {
+            bindEvents();
+            if (currentUser) {
+                showApp();
+                render();
+                await refreshData(true);
+            } else {
+                showLogin();
+                await refreshData();
+            }
+
+            pollingId = window.setInterval(() => {
+                if (currentUser) refreshData();
+            }, 15000);
+        }
+
+        init();
+    </script>
 </body>
 </html>
