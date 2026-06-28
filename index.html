@@ -589,7 +589,8 @@
         function nodeUrl(path = '', basePath = activeDataPath) {
             const normalizedBase = basePath ? (basePath.startsWith('/') ? basePath : `/${basePath}`) : '';
             const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
-            return `${DATABASE_URL}${normalizedBase}${normalizedPath}.json`;
+            const nodePath = `${normalizedBase}${normalizedPath}` || '/';
+            return `${DATABASE_URL}${nodePath}.json`;
         }
 
         async function rawApiRequest(basePath, path = '', method = 'GET', body) {
@@ -613,10 +614,13 @@
             }
 
             let lastError = null;
+            let preferredData = null;
+            let preferredRequestSucceeded = false;
 
             try {
-                const preferredData = await rawApiRequest(DEFAULT_DATA_PATH, '', 'GET');
-                if (preferredData !== null) {
+                preferredData = await rawApiRequest(DEFAULT_DATA_PATH, '', 'GET');
+                preferredRequestSucceeded = true;
+                if (hasAppDataShape(preferredData)) {
                     activeDataPath = DEFAULT_DATA_PATH;
                     hasResolvedDataPath = true;
                     return activeDataPath;
@@ -634,6 +638,12 @@
                 }
             } catch (error) {
                 lastError = error;
+            }
+
+            if (preferredRequestSucceeded && preferredData === null) {
+                activeDataPath = DEFAULT_DATA_PATH;
+                hasResolvedDataPath = true;
+                return activeDataPath;
             }
 
             if (lastError) {
