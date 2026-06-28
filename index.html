@@ -520,6 +520,7 @@
         async function rawApiRequest(basePath, path = '', method = 'GET', body) {
             const response = await fetch(nodeUrl(path, basePath), {
                 method,
+                cache: 'no-store',
                 headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
                 body: body === undefined ? undefined : JSON.stringify(body)
             });
@@ -783,6 +784,7 @@
 
             try {
                 let usedOfflineFallback = false;
+                let createdNewPlayer = false;
                 let data;
                 try {
                     data = await readRemoteData();
@@ -797,6 +799,7 @@
                 let playerId = existing?.[0];
 
                 if (!playerId) {
+                    createdNewPlayer = true;
                     playerId = createId('p');
                     const payload = {
                         name,
@@ -819,6 +822,8 @@
                 render();
                 if (usedOfflineFallback || hasPendingLocalChanges) {
                     showOfflineStatus();
+                } else if (createdNewPlayer) {
+                    clearOfflineStatus();
                 } else {
                     clearOfflineStatus();
                     await refreshData();
