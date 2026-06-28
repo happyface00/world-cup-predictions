@@ -441,9 +441,11 @@
         const DEFAULT_DATA_PATH = '/nanaWorldCup2026';
         const USER_KEY = 'nana_world_cup_current_user';
         const LOCAL_CACHE_KEY = 'nana_world_cup_cache_v1';
+        const LEGACY_USER_KEYS = ['wc_nana_user', 'wc2026_user'];
+        const LEGACY_CACHE_KEYS = ['wc2026_pro_v3'];
         const ADMIN_PASS = 'nana2026';
 
-        let currentUser = readLocalJson(USER_KEY);
+        let currentUser = readStoredUser();
         let appData = createEmptyData();
         let isAdmin = false;
         let loading = false;
@@ -457,6 +459,28 @@
                 players: {},
                 matches: {},
                 predictions: {}
+            };
+        }
+
+        function legacyListToMap(items = []) {
+            return Array.isArray(items)
+                ? items.reduce((result, item) => {
+                    if (!item?.id) return result;
+                    result[item.id] = item;
+                    return result;
+                }, {})
+                : {};
+        }
+
+        function normalizeLegacyData(remote) {
+            if (!remote || typeof remote !== 'object') {
+                return createEmptyData();
+            }
+
+            return {
+                players: Array.isArray(remote.players) ? legacyListToMap(remote.players) : normalizeData(remote).players,
+                matches: Array.isArray(remote.matches) ? legacyListToMap(remote.matches) : normalizeData(remote).matches,
+                predictions: remote.predictions && typeof remote.predictions === 'object' ? remote.predictions : {}
             };
         }
 
@@ -476,12 +500,43 @@
             }
         }
 
+        function readStoredUser() {
+            const storedUser = readLocalJson(USER_KEY);
+            if (storedUser?.id && storedUser?.name) {
+                return storedUser;
+            }
+
+            for (const legacyKey of LEGACY_USER_KEYS) {
+                const legacyUser = readLocalJson(legacyKey);
+                if (legacyUser?.id && legacyUser?.name) {
+                    writeLocalJson(USER_KEY, legacyUser);
+                    return legacyUser;
+                }
+            }
+
+            return null;
+        }
+
         function writeLocalJson(key, value) {
             localStorage.setItem(key, JSON.stringify(value));
         }
 
         function readCachedData() {
-            return normalizeData(readLocalJson(LOCAL_CACHE_KEY) || createEmptyData());
+            const cachedData = readLocalJson(LOCAL_CACHE_KEY);
+            if (cachedData) {
+                return normalizeData(cachedData);
+            }
+
+            for (const legacyKey of LEGACY_CACHE_KEYS) {
+                const legacyData = readLocalJson(legacyKey);
+                if (legacyData) {
+                    const migratedData = normalizeLegacyData(legacyData);
+                    writeLocalJson(LOCAL_CACHE_KEY, migratedData);
+                    return migratedData;
+                }
+            }
+
+            return createEmptyData();
         }
 
         function persistCache() {
